@@ -3,7 +3,6 @@ import pandas as pd
 import random
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from transformers import BertTokenizer
 from nltk.corpus import stopwords
@@ -12,7 +11,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', 50)
-
 stop_words = set(stopwords.words('english'))
 
 class DataPreprocessor:
@@ -70,7 +68,6 @@ class DataPreprocessor:
         else:
             normalized_weights = class_weights
             return torch.tensor(normalized_weights, dtype=torch.float32)
-
 
     def tokenize_data(self, max_len=50):
         # Load the BERT Tokenizer

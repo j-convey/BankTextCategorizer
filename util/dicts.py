@@ -74,13 +74,3 @@ walmart_sub_dict = {
                 'Fitness|Organic', 'Fitness|Optimum', 'Fitness|Performance', 'Fitness|Pre', 'Fitness|Protein Powder',
                 'Fitness|Vegan', 'Fitness|Winter', 'Fat Blockers', 'Fat Burners', 'Weight Loss Pills']}
 
-
-
-
-
-'''if __name__ == "__main__":
-    merged_df = merge_csv_files("C:\\Users\\Jordan Convey\\Documents\\GitHub\\Finance\\Categorize Bank Descriptions\\Training Data\\BigBasketProducts Dataset.csv", 
-        "C:\\Users\\Jordan Convey\\Documents\\GitHub\Finance\\Categorize Bank Descriptions\\Training Data\\AMZ Electronics Dataset.csv", 
-        "C:\\Users\\Jordan Convey\\Documents\\GitHub\\Finance\\Categorize Bank Descriptions\\Training Data\\Superstore DS.csv",
-        "C:\\Users\\Jordan Convey\\Documents\\GitHub\\Finance\\Categorize Bank Descriptions\\Training Data\\Clothes DS.csv",
-        "C:\\Users\\Jordan Convey\\Documents\\GitHub\\Finance\\Categorize Bank Descriptions\\Training Data\\WLMRT Product Data 2019.csv")'''

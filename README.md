@@ -15,6 +15,7 @@ This program is designed to help with the categorization of bank transaction des
 Make sure you have all the necessary libraries installed. Most importantly, ensure that torch, transformers, and pandas are available.
 Copy code
 pip install torch transformers pandas
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/9c88533e-23e1-4989-9d95-e01a53518ab5)
 
 ## Code Structure
 - Data Preprocessing: DataPreprocessor class is responsible for reading the CSV file, cleaning the data, tokenizing the sentences, and preparing the data for training.

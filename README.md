@@ -15,7 +15,7 @@ This program is designed to help with the categorization of bank transaction des
 - Simultaneous categorization into main category and subcategory.
 - Easy to use interface with simple Python functions.
 
-## How to Use
+## 🚀 How to Use
 ### Setup & Installation
 Make sure you have all the necessary libraries installed. Most importantly, ensure that torch, transformers, and pandas are available.
 ```bash

@@ -11,9 +11,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 def init_model_data():
     # Data Processing
-    books_obj = DataPreprocessor('Categorize Bank Descriptions/Training Data/PREPARED FOR TRAINING.csv')
+    books_obj = DataPreprocessor('data/main.csv')
     num_categories, num_subcategories = books_obj.get_cat_sub_numbers()
-    books_obj.pop_columns(), books_obj.clean_dataframe(), books_obj.shuffle_sentences(), books_obj.tokenize_data()
+    books_obj.pop_columns(), books_obj.clean_dataframe(), books_obj.tokenize_data()
     (X_train, X_test, y_cat_train, y_cat_test, y_sub_train, y_sub_test) = books_obj.prepare_data()
     df = books_obj.get_df()
     y_cat_train = np.array(y_cat_train)
@@ -80,20 +80,18 @@ def train_category_model(model, train_dataloader, val_dataloader, epochs, learni
     no_improvement_epochs = 0
     batch_print_interval = 5
     for epoch in range(epochs):
-        # Training phase
         model.train()
         total_train_loss = 0
         correct_train = 0
         for i, batch in enumerate(train_dataloader):
             input_ids, y_cat = [item.to(device) for item in batch[:2]]
             optimizer.zero_grad()
-            cat_probs, _ = model(input_ids)  # Taking only the category probabilities
+            cat_probs, _ = model(input_ids)
             cat_loss = category_loss_fn(cat_probs, y_cat)
             total_train_loss += cat_loss.item()
             correct_train += (cat_probs.argmax(dim=1) == y_cat).sum().item()
             cat_loss.backward()
             optimizer.step()
-            # Print every 10 batches
             if (i + 1) % batch_print_interval == 0:
                 # Validation phase inside the batch loop
                 model.eval()
@@ -125,7 +123,6 @@ def train_category_model(model, train_dataloader, val_dataloader, epochs, learni
             no_improvement_epochs = 0
         else:
             no_improvement_epochs += 1           
-        # Implement early stopping
         if no_improvement_epochs >= patience:
             print(f"Stopping early due to no improvement after {patience} epochs.")
             break
@@ -141,14 +138,13 @@ def train_subcategory_model(model, train_dataloader, val_dataloader, epochs, lea
     no_improvement_epochs = 0
     batch_print_interval = 5
     for epoch in range(epochs):
-        # Training phase
         model.train()
         total_train_loss = 0
         correct_train = 0
         for i, batch in enumerate(train_dataloader):
             input_ids, y_cat = [item.to(device) for item in batch[:2]]
             optimizer.zero_grad()
-            cat_probs, _ = model(input_ids)  # Taking only the category probabilities
+            cat_probs, _ = model(input_ids)
             cat_loss = category_loss_fn(cat_probs, y_cat)
             total_train_loss += cat_loss.item()
             correct_train += (cat_probs.argmax(dim=1) == y_cat).sum().item()
@@ -186,25 +182,20 @@ def train_subcategory_model(model, train_dataloader, val_dataloader, epochs, lea
             no_improvement_epochs = 0
         else:
             no_improvement_epochs += 1           
-        # Implement early stopping
+        # early stopping
         if no_improvement_epochs >= patience:
             print(f"Stopping early due to no improvement after {patience} epochs.")
             break
     return history
 
 def plot_training_history(history):
-    # Expected keys in the history dictionary
     expected_keys = ['train_loss', 'train_acc', 'val_loss', 'val_acc']
-    
-    # Check if all expected keys are present in history
     for key in expected_keys:
         if key not in history.keys():
             print(f"Error: Expected key {key} not found in history")
             return
-    
     # Plot training and validation loss
     plt.figure(figsize=(12, 5))
-    
     plt.subplot(1, 2, 1)
     plt.plot(history['train_loss'], label='Training Loss')
     plt.plot(history['val_loss'], label='Validation Loss')
@@ -212,7 +203,6 @@ def plot_training_history(history):
     plt.ylabel('Loss')
     plt.title('Training vs Validation Loss')
     plt.legend()
-    
     # Plot training and validation accuracy
     plt.subplot(1, 2, 2)
     plt.plot(history['train_acc'], label='Training Accuracy')
@@ -221,12 +211,11 @@ def plot_training_history(history):
     plt.ylabel('Accuracy')
     plt.title('Training vs Validation Accuracy')
     plt.legend()
-    
     plt.tight_layout()
     plt.show()
 
 def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs):
-    # Category Training & Saving    
+    '''Category Training & Saving'''    
     cat_model.to(device)
     category_history = train_category_model(cat_model, cat_train_dataloader, cat_val_dataloader, epochs, learning_rate, device, num_categories)
     # Move the model back to CPU before saving
@@ -236,7 +225,7 @@ def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, devic
     plot_training_history(category_history)
 
 def execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs):
-    # Subcategory Training & Saving
+    '''Subcategory Training & Saving'''
     sub_model.to(device)
     subcategory_history = train_subcategory_model(sub_model, sub_train_dataloader, sub_val_dataloader, epochs, learning_rate, device, num_subcategories)
     sub_model.to('cpu')
@@ -247,12 +236,10 @@ def execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, devic
 def main():
     learning_rate = 1e-5
     epochs = 2
-    # Initialize the model
     cat_model, sub_model, cat_train_dataloader, cat_val_dataloader, \
     sub_train_dataloader, sub_val_dataloader, device, num_categories, num_subcategories = init_model_data()
     # Execute & Save Models
     execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs)
     #execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs)
-
 if __name__ == '__main__':
     main()

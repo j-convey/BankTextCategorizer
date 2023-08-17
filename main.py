@@ -83,7 +83,7 @@ if __name__ == "__main__":
     # Number of subcategory
     num_subcategories = len(subcategory_mapping.keys())
     #data_path = ('PREPARED FOR TRAINING.csv')
-    model_path = 'C:\\Users\\Jordan Convey\\Documents\\GitHub\\Finance\\Categorize Bank Descriptions\\models\\pt_modelV6'
+    model_path = 'models/modelv1'
     csv_output_name = "RSSSSSSSSSS.CSV"
     #merged_df.to_csv("PREPARED FOR TRAINING.csv", index=False)
     books_obj = DataPreprocessor('Categorize Bank Descriptions/TESTFORMAPPING.csv')

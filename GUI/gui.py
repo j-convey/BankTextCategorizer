@@ -1,16 +1,107 @@
 import sys
+import csv
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QListWidget, QFileDialog, QVBoxLayout, QWidget, QGridLayout, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QGridLayout, QLabel, QLineEdit, QPushButton, QListWidget, QWidget
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QDropEvent
 from PyQt5.QtCore import Qt, QUrl, QStringListModel
+from utils import DataPreprocessor
+from transformers import BertTokenizer
 import pandas as pd
+from keras.models import load_model
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+from utils.model import BertModel
+from utils.dicts import categories
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+
+class LogicHandler:
+    def __init__(self):
+        self.combined_data = None
+        self.category_keys = list(categories.keys())
+        self.category_values = [item for sublist in categories.values() for item in sublist]
+        self.num_categories = len(self.category_keys)
+        self.num_subcategories = len(self.category_values)
+        self.model = BertModel(self.num_categories, self.num_subcategories)
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.label_encoder_cat = LabelEncoder()
+        self.label_encoder_subcat = LabelEncoder()
+        self.onehot_encoder_cat = OneHotEncoder(sparse_output=False)
+        self.onehot_encoder_subcat = OneHotEncoder(sparse_output=False)
+        self.integer_encoded_cat = self.label_encoder_cat.fit_transform(self.category_keys)
+        self.onehot_encoded_cat = self.onehot_encoder_cat.fit_transform(self.integer_encoded_cat.reshape(-1, 1))
+        # Encode category_values using label_encoder_subcat
+        self.integer_encoded_subcat = self.label_encoder_subcat.fit_transform(self.category_values)
+        self.onehot_encoded_subcat = self.onehot_encoder_subcat.fit_transform(self.integer_encoded_subcat.reshape(-1, 1))
+        # Create dictionaries for category and sub-category mapping
+        self.category_mapping = dict(zip(self.category_keys, self.onehot_encoded_cat))
+        self.subcategory_mapping = dict(zip(self.category_values, self.onehot_encoded_subcat))
+        self.num_categories = len(self.category_keys)
+        # Number of subcategory
+        self.num_subcategories = len(self.subcategory_mapping.keys())
+
+    def load_model(self, model_path):
+        # Load saved model weights
+        state_dict = torch.load(model_path)
+        # Load the model state dictionary into the model architecture
+        self.model.load_state_dict(state_dict)
+        # Set the model to evaluation mode
+        self.model.eval()
+        return self.model
+
+    def merge_csv_files(self, csv_files):
+        if len(csv_files) < 2 or len(csv_files) > 8:
+            raise ValueError("Select between 2 to 8 CSV files for merging.")
+        df = pd.read_csv(csv_files[0])
+        df = df[['Description', 'Category', 'Sub_Category']]
+        for file in csv_files[1:]:
+            temp_df = pd.read_csv(file, header=0)[['Description', 'Category', 'Sub_Category']]
+            df = pd.concat([df, temp_df], ignore_index=True)
+        df.dropna(subset=['Category', 'Sub_Category'], inplace=True)
+        self.combined_data = df
+        return df
+    
+    def prep_df(self):
+        df = self.combined_data
+        df.clean_dataframe()
+        X_predict = df.tokenize_predict_data()
+        predict_input_ids = torch.tensor(X_predict, dtype=torch.long)
+        predict_dataset = TensorDataset(predict_input_ids)
+        predict_dataloader = DataLoader(predict_dataset, batch_size=1, shuffle=False)
+        print("Length of predict_dataloader:", len(predict_dataloader))
+        return predict_dataloader
+
+    def predict(self):
+        predict_dataloader = self.prep_df()
+        df = self.combined_data
+        with open(df, mode='w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['Description', 'Category', 'Subcategory']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
+            writer.writeheader()
+            for batch in predict_dataloader:
+                input_ids = batch[0].to(self.device)
+                with torch.no_grad():
+                    category_probs, subcategory_probs = self.model(input_ids)
+                    category_predictions = category_probs.argmax(dim=-1)
+                    subcategory_predictions = subcategory_probs.argmax(dim=-1)
+                for i in range(input_ids.size(0)):
+                    category_name = self.label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
+                    subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
+                    # Unmap input_ids to the original description
+                    single_input_ids = input_ids[i].to('cpu')
+                    tokens = self.tokenizer.convert_ids_to_tokens(single_input_ids)
+                    description = self.tokenizer.convert_tokens_to_string(tokens).strip()
+                    writer.writerow({'Description': description, 'Category': category_name, 'Subcategory': subcategory_name})
+        return None
+
+
 
 class Application(QMainWindow):
     def __init__(self):
         super().__init__()
         self.dark_mode = True
-        self.csv_files = []
+        self.logic = LogicHandler()
         self.init_ui()
 
     def init_ui(self):
@@ -126,12 +217,8 @@ class Application(QMainWindow):
             self.csv_listbox.addItem(file_path)
 
     def merge_csvs(self):
-        if len(self.csv_files) < 2 or len(self.csv_files) > 8:
-            QMessageBox.critical(self, "Error", "Select between 2 to 8 CSV files for merging.")
-            return
-
         try:
-            merged_df = self.merge_csv_files(*self.csv_files)
+            merged_df = self.logic.merge_csv_files(self.csv_files)
             QMessageBox.information(self, "Success", "CSV files merged successfully!")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
@@ -153,25 +240,20 @@ class Application(QMainWindow):
         print("Successfully merged all CSV files into one dataframe.")
         return df
     
-    '''def process_data(self):
+    def process_data(self):
         model_path = self.model_entry.get()
         csv_file = self.csv_entry.get()
-
         if not model_path or not csv_file:
-            messagebox.showerror("Error", "Please select the model and CSV file before processing.")
+            QMessageBox.showerror("Error", "Please select the model and CSV file before processing.")
             return
-
         try:
             # Load the model
-            loaded_model = self.load_model(model_path)
-
+            loaded_model = self.logic.load_model(model_path)
             # Predict using the model
-            self.predict(loaded_model, csv_file)
-
-            # Show success message
-            messagebox.showinfo("Success", "Data processed successfully!")
+            self.logic.predict(csv_file)
+            QMessageBox.showinfo("Success", "Data processed successfully!")
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")'''
+            QMessageBox.showerror("Error", f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

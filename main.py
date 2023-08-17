@@ -32,29 +32,24 @@ def merge_csv_files(*csv_files):
 
 def predict(model, dataloader, device, csv_output_name):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    
     model.to(device)
     with open(csv_output_name, mode='w', newline='', encoding='utf-8') as csvfile:
         fieldnames = ['Description', 'Category', 'Subcategory']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
         writer.writeheader()
-        
         for batch in dataloader:
             input_ids = batch[0].to(device)
             with torch.no_grad():
                 category_probs, subcategory_probs = model(input_ids)
                 category_predictions = category_probs.argmax(dim=-1)
                 subcategory_predictions = subcategory_probs.argmax(dim=-1)
-            
             for i in range(input_ids.size(0)):
                 category_name = label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
                 subcategory_name = label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
-                
                 # Unmap input_ids to the original description
                 single_input_ids = input_ids[i].to('cpu')
                 tokens = tokenizer.convert_ids_to_tokens(single_input_ids)
                 description = tokenizer.convert_tokens_to_string(tokens).strip()
-                
                 writer.writerow({'Description': description, 'Category': category_name, 'Subcategory': subcategory_name})
     return None
 
@@ -75,15 +70,12 @@ if __name__ == "__main__":
     label_encoder_subcat = LabelEncoder()
     onehot_encoder_cat = OneHotEncoder(sparse_output=False)
     onehot_encoder_subcat = OneHotEncoder(sparse_output=False)
-
     # Encode category_keys using label_encoder_cat
     integer_encoded_cat = label_encoder_cat.fit_transform(category_keys)
     onehot_encoded_cat = onehot_encoder_cat.fit_transform(integer_encoded_cat.reshape(-1, 1))
-
     # Encode category_values using label_encoder_subcat
     integer_encoded_subcat = label_encoder_subcat.fit_transform(category_values)
     onehot_encoded_subcat = onehot_encoder_subcat.fit_transform(integer_encoded_subcat.reshape(-1, 1))
-
     # Create dictionaries for category and sub-category mapping
     category_mapping = dict(zip(category_keys, onehot_encoded_cat))
     subcategory_mapping = dict(zip(category_values, onehot_encoded_subcat))
@@ -102,8 +94,6 @@ if __name__ == "__main__":
     predict_dataset = TensorDataset(predict_input_ids)
     predict_dataloader = DataLoader(predict_dataset, batch_size=1, shuffle=False)
     print("Length of predict_dataloader:", len(predict_dataloader))
-
-
     loaded_model = load_model(model_path)
     print("Model loaded successfully")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

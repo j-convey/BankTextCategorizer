@@ -1,22 +1,22 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QListWidget, QFileDialog, QVBoxLayout, QWidget, QGridLayout, QMessageBox
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMainWindow, QGridLayout, QLabel, QLineEdit, QPushButton, QListWidget, QWidget
+from PyQt5.QtGui import QIcon, QDragEnterEvent, QDropEvent
+from PyQt5.QtCore import Qt, QUrl, QStringListModel
 import pandas as pd
 
 class Application(QMainWindow):
-
     def __init__(self):
         super().__init__()
-
-        self.dark_mode = True  # Default mode set to dark
+        self.dark_mode = True
         self.csv_files = []
-
         self.init_ui()
 
     def init_ui(self):
-
         layout = QGridLayout()
-
+        self.setFixedSize(600, 300)
+        self.setWindowIcon(QIcon('GUI/icons/sorting_icon.png'))
         if self.dark_mode:
             bg_color = "#2c2c2c"
             fg_color = "#e1e1e1"
@@ -29,6 +29,9 @@ class Application(QMainWindow):
             btn_color = "#a7a7a7"
             btn_fg_color = "#2c2c2c"
             switch_theme_text = "Switch to Dark Mode"
+        # Enabling Drag and Drop for the main window
+        self.setAcceptDrops(True)
+        folder_icon = QIcon('GUI/icons/folder_icon.png')
 
         # Model Path
         self.model_label = QLabel("Model Path:", self)
@@ -40,6 +43,9 @@ class Application(QMainWindow):
         layout.addWidget(self.model_entry, 0, 1)
 
         self.model_button = QPushButton("Browse", self)
+        # Adding icon to model_button after its definition
+        
+        self.model_button.setIcon(folder_icon)
         self.model_button.clicked.connect(self.load_model_path)
         self.model_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         layout.addWidget(self.model_button, 0, 2)
@@ -50,11 +56,12 @@ class Application(QMainWindow):
         layout.addWidget(self.csv_label, 1, 0)
 
         self.csv_listbox = QListWidget(self)
-        self.csv_listbox.setFixedHeight(150)
+        self.csv_listbox.setFixedHeight(100)
         self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         layout.addWidget(self.csv_listbox, 1, 1)
 
         self.csv_button = QPushButton("Add CSV", self)
+        self.csv_button.setIcon(folder_icon)
         self.csv_button.clicked.connect(self.add_csv_path)
         self.csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         layout.addWidget(self.csv_button, 1, 2)
@@ -89,6 +96,23 @@ class Application(QMainWindow):
     def switch_theme(self):
         self.dark_mode = not self.dark_mode
         self.init_ui()
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        # Checking if the dragged object contains URLs (i.e., file paths)
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        # Extracting file paths from the dropped object
+        file_urls = event.mimeData().urls()
+        
+        for url in file_urls:
+            file_path = url.toLocalFile()
+
+            # Checking if the file is a CSV before adding it to the list
+            if file_path.endswith('.csv'):
+                self.csv_files.append(file_path)
+                self.csv_listbox.addItem(file_path)
 
     def load_model_path(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Model File")

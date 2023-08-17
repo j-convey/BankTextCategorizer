@@ -58,6 +58,11 @@ By following these steps, you can easily customize the categorization to suit yo
 - BERT Model: BertModel class initializes the BERT model with the appropriate number of categories and subcategories.
 - Training: train_category_model function handles the training loop, including batching, forward and backward passes, and early stopping.
 
+## Performance
+Here are my results after using main.csv dataset (62,793 lines of data) for 2 epochs. This took around 10 hours to complete based on my hardware. This is without using data augmentation to double the size due to time restaints.
+![cat_modelV1](https://github.com/j-convey/BankTextCategorizer/assets/85854964/f457198d-4de0-4ef2-b7eb-3f30d6c14d58)
+
+
 ## Future Improvements
 - Implementing the subcategory model training function.
 - Refining the data preprocessing pipeline.

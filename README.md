@@ -68,3 +68,9 @@ Here are my results after using main.csv dataset (62,793 lines of data) for 2 ep
 - Refining the data preprocessing pipeline.
 - Fine-tuning the BERT model for better performance.
 - Implementing a gui for ease of use.
+
+## Contribute
+1. Consider contributing to the project.
+2. Add a Github Star to the project.
+3. Post about the project on X.
+

@@ -1,5 +1,10 @@
 # Bank Transaction Categorization
 A simple and powerful tool that uses a neural network to categorize bank transaction descriptions into respective categories and subcategories.
+## 💡 Motivation
+My primary motivation for creating this project was to provide an alternative to existing solutions by emphasizing two critical values:
+
+1. Self-hosting: By allowing users to host the solution on their infrastructure, this project offers complete control over data, operations, and customization. Self-hosting eliminates the dependency on third-party services which might shut down, change their terms, or even introduce pricing that might not be favorable to all.
+2. Privacy-friendly: In an era where every click, every view, and even every scroll is tracked, privacy has become a scarce commodity. This project is designed with privacy at its core. No unnecessary data collection, no sneaky trackers, and no third-party analytics. Your data stays yours, and that's how it should be.
 
 ## Overview
 This program is designed to help with the categorization of bank transaction descriptions. It leverages the power of the BERT model to recognize patterns in transaction descriptions and subsequently classify them into predefined categories and subcategories.

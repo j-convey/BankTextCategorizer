@@ -1,16 +1,21 @@
 # Bank Transaction Categorization
 A simple and powerful tool that uses a neural network to categorize bank transaction descriptions into respective categories and subcategories.
+## 💡 Motivation
+My primary motivation for creating this project was to provide an alternative to existing solutions by emphasizing two critical values:
 
-## Overview
+1. Self-hosting: By allowing users to host the solution on their infrastructure, this project offers complete control over data, operations, and customization. Self-hosting eliminates the dependency on third-party services which might shut down, change their terms, or even introduce pricing that might not be favorable to all.
+2. Privacy-friendly: In an era where every click, every view, and even every scroll is tracked, privacy has become a scarce commodity. This project is designed with privacy at its core. No unnecessary data collection, no sneaky trackers, and no third-party analytics. Your data stays yours, and that's how it should be.
+
+## 📋 Overview
 This program is designed to help with the categorization of bank transaction descriptions. It leverages the power of the BERT model to recognize patterns in transaction descriptions and subsequently classify them into predefined categories and subcategories.
 
-## Features
+## ✨ Features
 - Data preprocessing to clean and prepare the transaction descriptions for the neural network.
 - Utilizes the BERT model, a state-of-the-art NLP model, for accurate categorization.
 - Simultaneous categorization into main category and subcategory.
 - Easy to use interface with simple Python functions.
 
-## How to Use
+## 🚀 How to Use
 ### Setup & Installation
 Make sure you have all the necessary libraries installed. Most importantly, ensure that torch, transformers, and pandas are available.
 ```bash
@@ -50,16 +55,27 @@ Re-Train the Model: With the updated categories and training data, re-run the ma
 By following these steps, you can easily customize the categorization to suit your personal or business needs.
 
 
-## UI
+## 🖥️ UI
 ![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/9c88533e-23e1-4989-9d95-e01a53518ab5)
 
-## Code Structure
+## 🏗️ Code Structure
 - Data Preprocessing: DataPreprocessor class is responsible for reading the CSV file, cleaning the data, tokenizing the sentences, and preparing the data for training.
 - BERT Model: BertModel class initializes the BERT model with the appropriate number of categories and subcategories.
 - Training: train_category_model function handles the training loop, including batching, forward and backward passes, and early stopping.
 
-## Future Improvements
+## 📈 Performance
+Here are my results after using main.csv dataset (62,793 lines of data) for 2 epochs. This took around 10 hours to complete based on my hardware. This is without using data augmentation to double the size due to time restaints.
+![cat_modelV1](https://github.com/j-convey/BankTextCategorizer/assets/85854964/f457198d-4de0-4ef2-b7eb-3f30d6c14d58)
+
+
+## 🔮 Future Improvements
 - Implementing the subcategory model training function.
 - Refining the data preprocessing pipeline.
 - Fine-tuning the BERT model for better performance.
 - Implementing a gui for ease of use.
+
+## 🤝 Contribute
+1. Consider contributing to the project.
+2. Add a Github Star to the project.
+3. Post about the project on X.
+

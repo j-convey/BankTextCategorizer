@@ -19,20 +19,20 @@ class DataPreprocessor:
         self.df = pd.read_csv(file_path)
         self.file_name = file_path.split('/')[-1].split('.')[0]
         categories = {
-    'Auto': ['Gas','Maintenance', 'Upgrades', 'Other_Auto'],
-    'Baby': ['Diapers', 'Formula', 'Clothes', 'Toys', 'Other_Baby'],
-    'Clothes': ['Clothes', 'Shoes', 'Jewelry', 'Bags_Accessories'],
-    'Entertainment': ['Sports_Outdoors', 'Movies_TV', 'DateNights', 'Arts_Crafts', 'Books', 'Games', 'Guns', 'E_Other'],
-    'Electronics': ['Accessories', 'Computer', 'TV', 'Camera', 'Phone','Tablet_Watch', 'Gaming', 'Electronics_misc'],
-    'Food': ['Groceries', 'FastFood_Restaurants'],
-    'Home': ['Maintenance', 'Furniture_Appliances', 'Hygiene', 'Gym',
-        'Home_Essentials', 'Kitchen', 'Decor', 'Security', 'Yard_Garden', 'Tools'],
-    'Medical': ['Health_Wellness'],
-    'Kids': ['K_Toys'],
-    'Personal_Care': ['Hair', 'Makeup_Nails', 'Beauty', 'Massage','Vitamins_Supplements', 'PC_Other'],
-    'Pets': ['Pet_Food', 'Pet_Toys', 'Pet_Med', 'Pet_Grooming', 'Pet_Other'],
-    'Subscriptions_Memberships': ['Entertainment', 'Gym', 'Sub_Other'],
-    'Travel': ['Hotels', 'Flights', 'Car_Rental', 'Activities']}
+            'Auto': ['Gas','Maintenance', 'Upgrades', 'Other_Auto'],
+            'Baby': ['Diapers', 'Formula', 'Clothes', 'Toys', 'Other_Baby'],
+            'Clothes': ['Clothes', 'Shoes', 'Jewelry', 'Bags_Accessories'],
+            'Entertainment': ['Sports_Outdoors', 'Movies_TV', 'DateNights', 'Arts_Crafts', 'Books', 'Games', 'Guns', 'E_Other'],
+            'Electronics': ['Accessories', 'Computer', 'TV', 'Camera', 'Phone','Tablet_Watch', 'Gaming', 'Electronics_misc'],
+            'Food': ['Groceries', 'FastFood_Restaurants'],
+            'Home': ['Maintenance', 'Furniture_Appliances', 'Hygiene', 'Gym',
+                'Home_Essentials', 'Kitchen', 'Decor', 'Security', 'Yard_Garden', 'Tools'],
+            'Medical': ['Health_Wellness'],
+            'Kids': ['K_Toys'],
+            'Personal_Care': ['Hair', 'Makeup_Nails', 'Beauty', 'Massage','Vitamins_Supplements', 'PC_Other'],
+            'Pets': ['Pet_Food', 'Pet_Toys', 'Pet_Med', 'Pet_Grooming', 'Pet_Other'],
+            'Subscriptions_Memberships': ['Entertainment', 'Gym', 'Sub_Other'],
+            'Travel': ['Hotels', 'Flights', 'Car_Rental', 'Activities']}
         category_keys = list(categories.keys())
         category_values = [item for sublist in categories.values() for item in sublist]
         # Convert categorical variables to numerical labels
@@ -124,7 +124,7 @@ class DataPreprocessor:
         #Remove any duplicate rows where Description and Category are the same
         self.df.drop_duplicates(subset=['Description', 'Category'], keep='first', inplace=True)
         # Use regular expression to remove non-letter characters
-        self.df['Description'] = self.df['Description'].apply(lambda x: re.sub(r'[^a-zA-Z ]', '', x))    
+        self.df['Description'] = self.df['Description'].apply(lambda x: re.sub(r'[^a-zA-Z ]', '', str(x)))
         self.df['Description'] = self.df['Description'].apply(lambda x: re.sub(r'[^a-zA-Z\-\' ]', '', x))
         #remove white spaces and make all lowercase
         self.df['Description'] = self.df['Description'].apply(lambda x: x.strip().lower())

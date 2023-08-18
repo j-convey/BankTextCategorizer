@@ -1,0 +1,390 @@
+import sys
+import csv
+import pandas as pd
+import torch
+from transformers import BertTokenizer
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QLabel, QLineEdit, QListWidget, QPushButton, 
+                             QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox, 
+                             QDialog)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QDragEnterEvent, QDropEvent
+from PyQt5.QtCore import Qt, QUrl, QStringListModel
+from data_prep import DataPreprocessor
+from model import BertModel
+from dicts import categories
+
+
+
+class LogicHandler:
+    def __init__(self):
+        self.combined_data = None
+        self.category_keys = list(categories.keys())
+        self.category_values = [item for sublist in categories.values() for item in sublist]
+        self.num_categories = len(self.category_keys)
+        self.num_subcategories = len(self.category_values)
+        self.cat_model = BertModel(self.num_categories, self.num_subcategories)
+        self.sub_model = BertModel(self.num_categories, self.num_subcategories)
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.label_encoder_cat = LabelEncoder()
+        self.label_encoder_subcat = LabelEncoder()
+        self.onehot_encoder_cat = OneHotEncoder(sparse_output=False)
+        self.onehot_encoder_subcat = OneHotEncoder(sparse_output=False)
+        self.integer_encoded_cat = self.label_encoder_cat.fit_transform(self.category_keys)
+        self.onehot_encoded_cat = self.onehot_encoder_cat.fit_transform(self.integer_encoded_cat.reshape(-1, 1))
+        # Encode category_values using label_encoder_subcat
+        self.integer_encoded_subcat = self.label_encoder_subcat.fit_transform(self.category_values)
+        self.onehot_encoded_subcat = self.onehot_encoder_subcat.fit_transform(self.integer_encoded_subcat.reshape(-1, 1))
+        # Create dictionaries for category and sub-category mapping
+        self.category_mapping = dict(zip(self.category_keys, self.onehot_encoded_cat))
+        self.subcategory_mapping = dict(zip(self.category_values, self.onehot_encoded_subcat))
+        self.num_categories = len(self.category_keys)
+        # Number of subcategory
+        self.num_subcategories = len(self.subcategory_mapping.keys())
+
+    def view_data(self):
+        return self.combined_data
+    
+    def load_model(self, model_path):
+        # Load saved model weights
+        state_dict = torch.load(model_path)
+        # Load the model state dictionary into the model architecture
+        self.cat_model.load_state_dict(state_dict)
+        self.sub_model.load_state_dict(state_dict)
+        # Set the models to evaluation mode
+        self.cat_model.eval(), self.sub_model.eval()
+
+    def merge_csv_files(self, csv_files):
+        if len(csv_files) < 2 or len(csv_files) > 8:
+            raise ValueError("Select between 2 to 8 CSV files for merging.")
+        df = pd.read_csv(csv_files[0])
+        df = df[['Description', 'Category', 'Sub_Category']]
+        for file in csv_files[1:]:
+            temp_df = pd.read_csv(file, header=0)[['Description', 'Category', 'Sub_Category']]
+            print(temp_df.head())
+            df = pd.concat([df, temp_df], ignore_index=True)
+        self.combined_data = df
+        return df
+    
+    def prep_df(self):
+        self.combined_data = self.combined_data.clean_dataframe()
+        X_predict = self.combined_data.tokenize_predict_data()
+        predict_input_ids = torch.tensor(X_predict, dtype=torch.long)
+        predict_dataset = TensorDataset(predict_input_ids)
+        predict_dataloader = DataLoader(predict_dataset, batch_size=1, shuffle=False)
+        print("Length of predict_dataloader:", len(predict_dataloader))
+        return predict_dataloader
+
+    def predict(self):
+        predict_dataloader = self.prep_df()
+        df = self.combined_data
+        with open(df, mode='w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['Description', 'Category', 'Subcategory']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
+            writer.writeheader()
+            for batch in predict_dataloader:
+                input_ids = batch[0].to(self.device)
+                with torch.no_grad():
+                    category_probs, subcategory_probs = self.model(input_ids)
+                    category_predictions = category_probs.argmax(dim=-1)
+                    subcategory_predictions = subcategory_probs.argmax(dim=-1)
+                for i in range(input_ids.size(0)):
+                    category_name = self.label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
+                    subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
+                    # Unmap input_ids to the original description
+                    single_input_ids = input_ids[i].to('cpu')
+                    tokens = self.tokenizer.convert_ids_to_tokens(single_input_ids)
+                    description = self.tokenizer.convert_tokens_to_string(tokens).strip()
+                    writer.writerow({'Description': description, 'Category': category_name, 'Subcategory': subcategory_name})
+        return None
+
+class StyledMessageBox(QMessageBox):
+    def __init__(self, dark_mode=True):
+        super().__init__()
+
+        if dark_mode:
+            bg_color = "#2c2c2c"
+            fg_color = "#e1e1e1"
+        else:
+            bg_color = "#e1e1e1"
+            fg_color = "#2c2c2c"
+
+        self.setStyleSheet(f"QMessageBox {{background-color: {bg_color}; color: {fg_color};}}")
+
+    def show_critical(self, title, text):
+        self.setText(title)
+        self.setInformativeText(text)
+        self.setIcon(QMessageBox.Critical)
+        return self.exec_()
+
+    def show_information(self, title, text):
+        self.setText(title)
+        self.setInformativeText(text)
+        self.setIcon(QMessageBox.Information)
+        return self.exec_()
+
+    def show_warning(self, title, text):
+        self.setText(title)
+        self.setInformativeText(text)
+        self.setIcon(QMessageBox.Warning)
+        return self.exec_()
+
+
+class Application(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.dark_mode = True
+        self.theme_icon_light = QIcon('utils/icons/dark_mode.png')  
+        self.theme_icon_dark = QIcon('utils/icons/light_mode.png')
+        self.trash_icon = QIcon('utils/icons/trash.png')
+        self.logic = LogicHandler()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QGridLayout()
+        self.setFixedSize(600, 300)
+        self.setWindowIcon(QIcon('GUI/icons/sorting_icon.png'))
+        if self.dark_mode:
+            bg_color = "#2c2c2c"
+            fg_color = "#e1e1e1"
+            btn_color = "#4a4a4a"
+            btn_fg_color = "#e1e1e1"
+            switch_theme_text = "Switch to Light Mode"
+        else:
+            bg_color = "#e1e1e1"
+            fg_color = "#2c2c2c"
+            btn_color = "#a7a7a7"
+            btn_fg_color = "#2c2c2c"
+            switch_theme_text = "Switch to Dark Mode"
+        # Enabling Drag and Drop for the main window
+        self.setAcceptDrops(True)
+        folder_icon = QIcon('utils/icons/folder_icon.png')
+
+        # Displaying Model Version
+        self.model_label = QLabel("Model Version:", self)
+        self.model_label.setStyleSheet(f"color: {fg_color}")
+        layout.addWidget(self.model_label, 0, 0)
+
+        self.model_entry = QLineEdit("pt_v1", self)
+        self.model_entry.setReadOnly(True)  # Setting the QLineEdit to read-only
+        self.model_entry.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        layout.addWidget(self.model_entry, 0, 1)
+
+        # CSV Files
+        self.csv_files = []
+        self.csv_label = QLabel("CSV Files:", self)
+        self.csv_label.setStyleSheet(f"color: {fg_color}")
+        layout.addWidget(self.csv_label, 1, 0)
+
+        self.csv_listbox = QListWidget(self)
+        self.csv_listbox.setFixedHeight(100)
+        self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        layout.addWidget(self.csv_listbox, 1, 1)
+
+        self.csv_button = QPushButton("Add CSV", self)
+        self.csv_button.setIcon(folder_icon)
+        self.csv_button.clicked.connect(self.add_csv_path)
+        self.csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        layout.addWidget(self.csv_button, 1, 2)
+
+        # CSV Remove Button
+        self.remove_csv_button = QPushButton("Remove CSV", self)
+        self.remove_csv_button.setIcon(self.trash_icon)
+        self.remove_csv_button.clicked.connect(self.remove_csv_path)
+        self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        layout.addWidget(self.remove_csv_button, 2, 2)  # Assuming the row to be 2, adjust as needed
+
+        # Merge CSVs
+        self.merge_button = QPushButton("Merge CSVs", self)
+        self.merge_button.clicked.connect(self.merge_csvs)
+        self.merge_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        layout.addWidget(self.merge_button, 2, 1)
+
+        # Process
+        self.process_button = QPushButton("Process", self)
+        self.process_button.clicked.connect(self.process_data)  # Connecting the process_data function
+        self.process_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        layout.addWidget(self.process_button, 3, 1)
+
+        # Switch Theme Button
+        self.switch_theme_button = QPushButton(self)
+        self.switch_theme_button.setIcon(self.theme_icon_dark if self.dark_mode else self.theme_icon_light)  # set initial icon based on mode
+        self.switch_theme_button.clicked.connect(self.switch_theme)
+        self.switch_theme_button.setFixedSize(32, 32)  # Adjust size to fit icon
+        layout.addWidget(self.switch_theme_button, 0, 2) 
+
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+
+        self.setWindowTitle("Bank Description Categorizer")
+        self.setGeometry(100, 100, 800, 600)
+        self.setStyleSheet(f"background-color: {bg_color}")
+
+    def apply_theme(self):
+        if self.dark_mode:
+            bg_color = "#2c2c2c"
+            fg_color = "#e1e1e1"
+            btn_color = "#4a4a4a"
+            btn_fg_color = "#e1e1e1"
+            self.switch_theme_button.setIcon(self.theme_icon_dark)
+        else:
+            bg_color = "#e1e1e1"
+            fg_color = "#2c2c2c"
+            btn_color = "#a7a7a7"
+            btn_fg_color = "#2c2c2c"
+            self.switch_theme_button.setIcon(self.theme_icon_light)
+        self.setStyleSheet(f"background-color: {bg_color}")
+        # Update styles for all other elements:
+        self.model_label.setStyleSheet(f"color: {fg_color}")
+        self.model_entry.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.csv_label.setStyleSheet(f"color: {fg_color}")
+        self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.merge_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.process_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        # Update QMessagebox
+        msg_box = StyledMessageBox(f"background-color: {bg_color}; color: {fg_color}")
+
+    def switch_theme(self):
+        self.dark_mode = not self.dark_mode
+        self.apply_theme()
+    
+    def apply_widget_theme(self, widget):
+        if self.dark_mode:
+            bg_color = "#2c2c2c"
+            fg_color = "#e1e1e1"
+        else:
+            bg_color = "#e1e1e1"
+            fg_color = "#2c2c2c"
+        widget.setStyleSheet(f"background-color: {bg_color}; color: {fg_color};")
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        # Checking if the dragged object contains URLs (i.e., file paths)
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        # Extracting file paths from the dropped object
+        file_urls = event.mimeData().urls()
+        
+        for url in file_urls:
+            file_path = url.toLocalFile()
+
+            # Checking if the file is a CSV before adding it to the list
+            if file_path.endswith('.csv'):
+                self.csv_files.append(file_path)
+                self.csv_listbox.addItem(file_path)
+
+    def add_csv_path(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV files (*.csv)")
+        if file_path:
+            self.csv_files.append(file_path)
+            self.csv_listbox.addItem(file_path)
+    
+    def remove_csv_path(self):
+        selected_items = self.csv_listbox.selectedItems()
+        if not selected_items:  # No item selected
+            msg_box = StyledMessageBox(self.dark_mode)
+            self.apply_widget_theme(msg_box)
+            msg_box.warning(self, "Warning", "Please select a CSV file to remove.")
+
+        for item in selected_items:
+            self.csv_files.remove(item.text())  # Remove from list
+            self.csv_listbox.takeItem(self.csv_listbox.row(item))  # Remove from GUI listbox
+
+    def merge_csvs(self):
+        msg_box = StyledMessageBox(self.dark_mode)
+        self.apply_widget_theme(msg_box)
+        # Display error if no CSV files are selected or if only 1
+        if len(self.csv_files) == 0:
+            msg_box.show_critical("Error", "Please select at least 2 CSV files to merge.")
+            return
+        elif len(self.csv_files) == 1:
+            msg_box.show_critical("Error", "Please select at least 2 CSV files to merge or click process to process 1 CSV file.")
+            return
+        try:
+            merged_df = self.logic.merge_csv_files(self.csv_files)
+            msg_box.show_information("Success", "CSV files merged successfully!")
+            self.show_merged_data(merged_df)
+        except Exception as e:
+            msg_box.critical(self, "Error", f"An error occurred: {str(e)}")
+
+    def show_merged_data(self, df):
+        data_preview = QDialog(self)
+        self.apply_widget_theme(data_preview)
+        data_preview.setWindowTitle("Merged CSV Data Preview")
+        layout = QVBoxLayout()
+        table = QTableWidget()
+        table.setColumnCount(len(df.columns))
+        table.setHorizontalHeaderLabels(df.columns)
+        table.setRowCount(len(df))
+        print(df.head()) # Debugging
+        for row in range(len(df)):
+            for col, col_name in enumerate(df.columns):
+                table.setItem(row, col, QTableWidgetItem(str(df.iloc[row][col_name])))
+        # Resize columns based on their content
+        # After resizing columns and before displaying the QDialog
+        total_width = table.verticalHeader().width() + 40  # width of vertical header + a little margin
+        for col in range(table.columnCount()):
+            total_width += table.columnWidth(col)
+        data_preview.setFixedWidth(total_width + 60)  # Additional 40 pixels for some margin/padding
+        # Apply custom style for dark mode
+        if self.dark_mode:
+            table.setStyleSheet("""
+                QTableWidget {
+                    gridline-color: #5A5A5A;
+                    border: none;
+                }
+                QHeaderView::section {
+                    background-color: #3A3A3A;
+                    color: #e1e1e1;
+                    border: 1px solid #6A6A6A;
+                    padding: 5px;
+                }
+            """)
+        layout.addWidget(table)
+        data_preview.setLayout(layout)
+        data_preview.exec_()
+
+
+    
+    def process_data(self):
+        # csv_file = single csv file or merged csv file
+        if len(self.csv_files) == 0:
+            QMessageBox.showerror("Error", "Please select CSV file before processing.")
+            return
+        elif len(self.csv_files) == 1:
+            csv_file = self.csv_files[0]
+        elif self.logic.combined_data is None:
+            QMessageBox.showerror("Error", "Please merge CSV files before processing.")
+            return
+        else: # Merged CSV file
+            csv_file = self.logic.combined_data
+        try:
+            # Load the model
+            self.logic.load_model()
+            # Predict using the model
+            self.logic.predict(csv_file)
+            # Save file dialog
+            save_path, _ = QFileDialog.getSaveFileName(self, "Save Processed Data", "", "CSV files (*.csv)")
+            if save_path:
+                # Assuming logic.predict() returns a dataframe of processed data
+                processed_data = self.logic.get_processed_data()
+                processed_data.to_csv(save_path, index=False)
+                QMessageBox.showinfo("Success", f"Data processed and saved to {save_path}")
+            else:
+                QMessageBox.showinfo("Information", "Data processed but not saved.")
+        except Exception as e:
+            QMessageBox.showerror("Error", f"An error occurred: {str(e)}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    main_window = Application()
+    main_window.show()
+    sys.exit(app.exec_())
+
+

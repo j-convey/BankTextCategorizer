@@ -7,7 +7,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QLabel, QLineEdit, QListWidget, QPushButton, 
                              QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox, 
-                             QDialog)
+                             QDialog, QSpacerItem, QSizePolicy)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QDropEvent
 from PyQt5.QtCore import Qt, QUrl, QStringListModel
@@ -63,7 +63,6 @@ class LogicHandler:
         df = df[['Description', 'Category', 'Sub_Category']]
         for file in csv_files[1:]:
             temp_df = pd.read_csv(file, header=0)[['Description', 'Category', 'Sub_Category']]
-            print(temp_df.head())
             df = pd.concat([df, temp_df], ignore_index=True)
         self.combined_data = df
         return df
@@ -144,8 +143,8 @@ class Application(QMainWindow):
 
     def init_ui(self):
         layout = QGridLayout()
-        self.setFixedSize(600, 300)
-        self.setWindowIcon(QIcon('GUI/icons/sorting_icon.png'))
+        self.setFixedSize(800, 500)
+        #self.setWindowIcon(QIcon('utils/icons/sorting_icon.png'))
         if self.dark_mode:
             bg_color = "#2c2c2c"
             fg_color = "#e1e1e1"
@@ -157,70 +156,78 @@ class Application(QMainWindow):
             fg_color = "#2c2c2c"
             btn_color = "#a7a7a7"
             btn_fg_color = "#2c2c2c"
-            switch_theme_text = "Switch to Dark Mode"
         # Enabling Drag and Drop for the main window
         self.setAcceptDrops(True)
         folder_icon = QIcon('utils/icons/folder_icon.png')
+        blankWidget = QWidget()
+        blankWidget.setFixedSize(25, 25)
 
-        # Displaying Model Version
-        self.model_label = QLabel("Model Version:", self)
-        self.model_label.setStyleSheet(f"color: {fg_color}")
-        layout.addWidget(self.model_label, 0, 0)
 
-        self.model_entry = QLineEdit("pt_v1", self)
-        self.model_entry.setReadOnly(True)  # Setting the QLineEdit to read-only
-        self.model_entry.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.model_entry, 0, 1)
+        # ROW, COLUMN, ROW SPAN, COLUMN SPAN, ALIGNMENT
+        '''Model Version Display'''
+        self.model_version_label = QLabel("Model Version: pt_v1", self)
+        self.model_version_label.setStyleSheet(f"color: {fg_color}; font-weight: bold;")
+        layout.addWidget(self.model_version_label, 0, 4, 1, 3, Qt.AlignCenter)
 
-        # CSV Files
+        '''Switch Theme Button'''
+        self.switch_theme_button = QPushButton(self)
+        self.switch_theme_button.setIcon(self.theme_icon_dark if self.dark_mode else self.theme_icon_light)  # set initial icon based on mode
+        self.switch_theme_button.clicked.connect(self.switch_theme)
+        self.switch_theme_button.setFixedSize(32, 32)  # Adjust size to fit icon
+        layout.addWidget(self.switch_theme_button, 0, 10, 1, 1, Qt.AlignRight)
+
+
+        '''CSV Files Button'''
         self.csv_files = []
         self.csv_label = QLabel("CSV Files:", self)
         self.csv_label.setStyleSheet(f"color: {fg_color}")
-        layout.addWidget(self.csv_label, 1, 0)
+        layout.addWidget(self.csv_label, 3, 1, 1, 1)
 
+        '''CSV Listbox'''
         self.csv_listbox = QListWidget(self)
-        self.csv_listbox.setFixedHeight(100)
+        #self.csv_listbox.setFixedHeight(150)
+        #self.csv_listbox.setFixedWidth(581)
         self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.csv_listbox, 1, 1)
+        layout.addWidget(self.csv_listbox, 2, 2, 3, 8)
 
+
+        '''Add CSV Button'''
         self.csv_button = QPushButton("Add CSV", self)
         self.csv_button.setIcon(folder_icon)
         self.csv_button.clicked.connect(self.add_csv_path)
         self.csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.csv_button, 1, 2)
+        layout.addWidget(self.csv_button, 5, 3, 1, 2, Qt.AlignCenter)
 
-        # CSV Remove Button
+        '''CSV Remove Button'''
         self.remove_csv_button = QPushButton("Remove CSV", self)
         self.remove_csv_button.setIcon(self.trash_icon)
         self.remove_csv_button.clicked.connect(self.remove_csv_path)
         self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.remove_csv_button, 2, 2)  # Assuming the row to be 2, adjust as needed
+        layout.addWidget(self.remove_csv_button, 5, 7, 1, 2, Qt.AlignCenter)
+
 
         # Merge CSVs
         self.merge_button = QPushButton("Merge CSVs", self)
         self.merge_button.clicked.connect(self.merge_csvs)
         self.merge_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.merge_button, 2, 1)
+        layout.addWidget(self.merge_button, 7, 3, 1, 6) 
+
+
+
 
         # Process
         self.process_button = QPushButton("Process", self)
         self.process_button.clicked.connect(self.process_data)  # Connecting the process_data function
         self.process_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.process_button, 3, 1)
-
-        # Switch Theme Button
-        self.switch_theme_button = QPushButton(self)
-        self.switch_theme_button.setIcon(self.theme_icon_dark if self.dark_mode else self.theme_icon_light)  # set initial icon based on mode
-        self.switch_theme_button.clicked.connect(self.switch_theme)
-        self.switch_theme_button.setFixedSize(32, 32)  # Adjust size to fit icon
-        layout.addWidget(self.switch_theme_button, 0, 2) 
-
+        layout.addWidget(self.process_button, 8, 3, 1, 6)
+        
+        layout.addWidget(blankWidget, 9, 0, 1, 12)
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
         self.setWindowTitle("Bank Description Categorizer")
-        self.setGeometry(100, 100, 800, 600)
+        #self.setGeometry(100, 100, 800, 600)
         self.setStyleSheet(f"background-color: {bg_color}")
 
     def apply_theme(self):
@@ -236,18 +243,16 @@ class Application(QMainWindow):
             btn_color = "#a7a7a7"
             btn_fg_color = "#2c2c2c"
             self.switch_theme_button.setIcon(self.theme_icon_light)
+        # Applying styles
         self.setStyleSheet(f"background-color: {bg_color}")
-        # Update styles for all other elements:
-        self.model_label.setStyleSheet(f"color: {fg_color}")
-        self.model_entry.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.model_version_label.setStyleSheet(f"color: {fg_color}; font-weight: bold;")
         self.csv_label.setStyleSheet(f"color: {fg_color}")
         self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         self.csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
+        self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         self.merge_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         self.process_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        # Update QMessagebox
-        msg_box = StyledMessageBox(f"background-color: {bg_color}; color: {fg_color}")
+
 
     def switch_theme(self):
         self.dark_mode = not self.dark_mode

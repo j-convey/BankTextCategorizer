@@ -1,2 +1,0 @@
-
-        if file_path:

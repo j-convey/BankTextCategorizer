@@ -61,8 +61,9 @@ class LogicHandler:
         sub_model = BertModel(self.num_categories, self.num_subcategories)
         # Load saved model weights
         state_dict = torch.load(self.sub_model_path)
-        self.sub_model.load_state_dict(state_dict)
-        self.sub_model.eval() # Set the models to evaluation mode
+        sub_model.load_state_dict(state_dict)
+        sub_model.eval()
+        return sub_model
 
     def merge_csv_files(self, csv_files):
         if len(csv_files) < 2 or len(csv_files) > 8:
@@ -87,32 +88,51 @@ class LogicHandler:
         print("Length of predict_dataloader:", len(predict_dataloader))
         return predict_dataloader
 
-    def predict(self, csv_file):
-        df = csv_file
-        model = self.load_cat_model()
-        model.to(self.device)
+    def predict(self, df):
+        # Load models
+        cat_model = self.load_cat_model()
+        sub_model = self.load_sub_model()
+
+        cat_model.to(self.device)
+        sub_model.to(self.device)
+
         output_csv = 'predict_data_test.csv'
-        
         predict_dataloader = self.prep_df(df)
-        print("Passed prep_df")
+
+        # Lists to store predictions and descriptions
+        categories, subcategories, descriptions = [], [], []
+
+        for batch in predict_dataloader:
+            input_ids = batch[0].to(self.device)
+
+            with torch.no_grad():
+                category_probs, _ = cat_model(input_ids)
+                category_predictions = category_probs.argmax(dim=-1)
+
+                _, subcategory_probs = sub_model(input_ids)
+                subcategory_predictions = subcategory_probs.argmax(dim=-1)
+
+            for i in range(input_ids.size(0)):
+                category_name = self.label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
+                categories.append(category_name)
+                
+                subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
+                subcategories.append(subcategory_name)
+                
+                # Unmap input_ids to the original description
+                single_input_ids = input_ids[i].to('cpu')
+                tokens = self.tokenizer.convert_ids_to_tokens(single_input_ids)
+                description = self.tokenizer.convert_tokens_to_string([token for token in tokens if token != "[PAD]"]).strip()
+                descriptions.append(description)
+    
+        # Write to CSV
         with open(output_csv, mode='w', newline='', encoding='utf-8') as csvfile:
             fieldnames = ['Description', 'Category', 'Subcategory']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
             writer.writeheader()
-            for batch in predict_dataloader:
-                input_ids = batch[0].to(self.device)
-                with torch.no_grad():
-                    category_probs, _ = model(input_ids)
-                    category_predictions = category_probs.argmax(dim=-1)
-                    #subcategory_predictions = subcategory_probs.argmax(dim=-1)
-                for i in range(input_ids.size(0)):
-                    category_name = self.label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
-                    #subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
-                    # Unmap input_ids to the original description
-                    single_input_ids = input_ids[i].to('cpu')
-                    tokens = self.tokenizer.convert_ids_to_tokens(single_input_ids)
-                    description = self.tokenizer.convert_tokens_to_string(tokens).strip()
-                    writer.writerow({'Description': description, 'Category': category_name})
+            for description, category, subcategory in zip(descriptions, categories, subcategories):
+                writer.writerow({'Description': description, 'Category': category, 'Subcategory': subcategory})
+
         self.predict_df = pd.read_csv(output_csv)
         return output_csv
 
@@ -369,6 +389,7 @@ class Application(QMainWindow):
 
     def process_data(self):
         msg_box = StyledMessageBox(self.dark_mode)
+        # Make sure the provided input is consistent with expectations
         if len(self.csv_files) == 0:
             msg_box.show_critical("Error", "Please select CSV file before processing.")
             return
@@ -377,10 +398,12 @@ class Application(QMainWindow):
         elif self.logic.combined_data is None:
             msg_box.show_critical("Error", "Please merge CSV files before processing.")
             return
-        else: # Merged CSV file
+        else:
             df_to_process = self.logic.combined_data
+
         try:
             self.logic.predict(df_to_process)
+
             # Save file dialog
             save_path, _ = QFileDialog.getSaveFileName(self, "Save Processed Data", "", "CSV files (*.csv)")
             if save_path:

@@ -70,7 +70,7 @@ class BertModel(nn.Module):
         category_logits, subcategory_logits = logits.split([self.num_categories, self.num_subcategories], dim=-1)
         return category_logits, subcategory_logits
     
-def train_category_model(model, train_dataloader, val_dataloader, epochs, learning_rate, device, print_interval=1, patience=5):
+def train_model(model, model_type, train_dataloader, val_dataloader, epochs, learning_rate, device, print_interval=1, patience=5):
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
     category_loss_fn = nn.CrossEntropyLoss(reduction='sum')
@@ -86,7 +86,10 @@ def train_category_model(model, train_dataloader, val_dataloader, epochs, learni
         for i, batch in enumerate(train_dataloader):
             input_ids, y_cat = [item.to(device) for item in batch[:2]]
             optimizer.zero_grad()
-            cat_probs, _ = model(input_ids)
+            if model_type == 'category':
+                cat_probs, _ = model(input_ids)
+            elif model_type == 'subcategory':
+                _, cat_probs = model(input_ids)
             cat_loss = category_loss_fn(cat_probs, y_cat)
             total_train_loss += cat_loss.item()
             correct_train += (cat_probs.argmax(dim=1) == y_cat).sum().item()
@@ -100,7 +103,10 @@ def train_category_model(model, train_dataloader, val_dataloader, epochs, learni
                 with torch.no_grad():
                     for batch in val_dataloader:
                         input_ids, y_cat = [item.to(device) for item in batch[:2]]
-                        cat_probs, _ = model(input_ids)
+                        if model_type == 'category':
+                            cat_probs, _ = model(input_ids)
+                        elif model_type == 'subcategory':
+                            _, cat_probs = model(input_ids)
                         cat_loss = category_loss_fn(cat_probs, y_cat)                
                         total_val_loss += cat_loss.item()
                         correct_val += (cat_probs.argmax(dim=1) == y_cat).sum().item()        
@@ -123,66 +129,6 @@ def train_category_model(model, train_dataloader, val_dataloader, epochs, learni
             no_improvement_epochs = 0
         else:
             no_improvement_epochs += 1           
-        if no_improvement_epochs >= patience:
-            print(f"Stopping early due to no improvement after {patience} epochs.")
-            break
-    return history
-
-def train_subcategory_model(model, train_dataloader, val_dataloader, epochs, learning_rate, device, num_subcategories, subcategory_weights, print_interval=10, patience=5):
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
-    category_loss_fn = nn.CrossEntropyLoss(reduction='sum')
-    history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
-    model = model.to(device)
-    best_val_loss = float('inf')
-    no_improvement_epochs = 0
-    batch_print_interval = 5
-    for epoch in range(epochs):
-        model.train()
-        total_train_loss = 0
-        correct_train = 0
-        for i, batch in enumerate(train_dataloader):
-            input_ids, y_cat = [item.to(device) for item in batch[:2]]
-            optimizer.zero_grad()
-            cat_probs, _ = model(input_ids)
-            cat_loss = category_loss_fn(cat_probs, y_cat)
-            total_train_loss += cat_loss.item()
-            correct_train += (cat_probs.argmax(dim=1) == y_cat).sum().item()
-            cat_loss.backward()
-            optimizer.step()
-            # Print every 10 batches
-            if (i + 1) % batch_print_interval == 0:
-                # Validation phase inside the batch loop
-                model.eval()
-                total_val_loss = 0
-                correct_val = 0        
-                with torch.no_grad():
-                    for batch in val_dataloader:
-                        input_ids, y_cat = [item.to(device) for item in batch[:2]]
-                        cat_probs, _ = model(input_ids)
-                        cat_loss = category_loss_fn(cat_probs, y_cat)                
-                        total_val_loss += cat_loss.item()
-                        correct_val += (cat_probs.argmax(dim=1) == y_cat).sum().item()        
-                avg_val_loss = total_val_loss / len(val_dataloader)
-                val_acc = correct_val / len(val_dataloader.dataset)
-                avg_train_loss = total_train_loss / (i + 1)  # current average for this epoch up to batch i
-                train_acc = (correct_train / ((i + 1) * len(batch))) / 100
-                print(f"Epoch {epoch}/{epochs} - Batch {i+1}/{len(train_dataloader)} "
-                    f"- Training loss: {avg_train_loss:.4f}, Training Acc: {train_acc:.4f}, "
-                    f"Validation loss: {avg_val_loss:.4f}, Validation Acc: {val_acc:.4f}")
-                model.train()  # Switch back to training mode
-        history['train_loss'].append(avg_train_loss)
-        history['train_acc'].append(train_acc)        
-        history['val_loss'].append(avg_val_loss)
-        history['val_acc'].append(val_acc)
-        # Update learning rate
-        scheduler.step(avg_val_loss)
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            no_improvement_epochs = 0
-        else:
-            no_improvement_epochs += 1           
-        # early stopping
         if no_improvement_epochs >= patience:
             print(f"Stopping early due to no improvement after {patience} epochs.")
             break
@@ -217,7 +163,7 @@ def plot_training_history(history):
 def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs):
     '''Category Training & Saving'''    
     cat_model.to(device)
-    category_history = train_category_model(cat_model, cat_train_dataloader, cat_val_dataloader, epochs, learning_rate, device, num_categories)
+    category_history = train_model(cat_model, cat_train_dataloader, cat_val_dataloader, epochs, learning_rate, device, num_categories)
     # Move the model back to CPU before saving
     cat_model.to('cpu')
     cat_model_save_path = 'models/pt_cat_modelV1'
@@ -227,11 +173,11 @@ def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, devic
 def execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs):
     '''Subcategory Training & Saving'''
     sub_model.to(device)
-    subcategory_history = train_subcategory_model(sub_model, sub_train_dataloader, sub_val_dataloader, epochs, learning_rate, device, num_subcategories)
+    subcategory_history = train_model(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate, device)
     sub_model.to('cpu')
-    plot_training_history(subcategory_history)
     sub_model_save_path = 'models/pt_sub_modelV1'
     torch.save(sub_model.state_dict(), sub_model_save_path)
+    plot_training_history(subcategory_history)
 
 def main():
     learning_rate = 1e-5
@@ -239,7 +185,7 @@ def main():
     cat_model, sub_model, cat_train_dataloader, cat_val_dataloader, \
     sub_train_dataloader, sub_val_dataloader, device, num_categories, num_subcategories = init_model_data()
     # Execute & Save Models
-    execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs)
-    #execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs)
+    #execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs)
+    execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs)
 if __name__ == '__main__':
     main()

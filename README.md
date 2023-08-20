@@ -56,7 +56,7 @@ By following these steps, you can easily customize the categorization to suit yo
 
 
 ## 🖥️ UI
-![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/721485b6-e85e-4216-95ae-c248610410ff)
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/e701405c-a379-4a15-936f-07215da23efe)
 
 ## 🏗️ Code Structure
 - Data Preprocessing: DataPreprocessor class is responsible for reading the CSV file, cleaning the data, tokenizing the sentences, and preparing the data for training.

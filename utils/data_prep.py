@@ -15,9 +15,19 @@ stop_words = set(stopwords.words('english'))
 
 class DataPreprocessor:
     '''Data Preparation: Prepare a dataset of bank transaction descriptions along with their corresponding categories and sub-categories.'''
-    def __init__(self, file_path):
-        self.df = pd.read_csv(file_path)
-        self.file_name = file_path.split('/')[-1].split('.')[0]
+    def __init__(self, data_input):
+        # If it's a string, assume it's a file path and read it into a DataFrame
+        if isinstance(data_input, str):
+            self.df = pd.read_csv(data_input)
+            self.file_name = data_input.split('/')[-1].split('.')[0]
+        # If it's a DataFrame, directly assign it
+        elif isinstance(data_input, pd.DataFrame):
+            self.df = data_input
+            self.file_name = ""  # Default to an empty string or set it to some value if needed
+        else:
+            raise ValueError("data_input must be a file path or a pandas DataFrame")
+
+        #self.file_name = file_name
         categories = {
             'Auto': ['Gas','Maintenance', 'Upgrades', 'Other_Auto'],
             'Baby': ['Diapers', 'Formula', 'Clothes', 'Toys', 'Other_Baby'],

@@ -96,9 +96,9 @@ if __name__ == "__main__":
     num_subcategories = len(subcategory_mapping.keys())
     #data_path = ('PREPARED FOR TRAINING.csv')
     category_model_path = '/Users/Jordan Convey/Documents/GitHub/BankTextCategorizer/models/pt_cat_modelV1'
-    csv_output_name = "predictv1.CSV"
+    csv_output_name = "fastftest.CSV"
     #merged_df.to_csv("PREPARED FOR TRAINING.csv", index=False)
-    books_obj = DataPreprocessor('data\Predict Data.csv')
+    books_obj = DataPreprocessor('data/Standalones/Food - Fast Food.csv')
     books_obj.clean_dataframe()
     books_obj.tokenize_predict_data()
     X_predict = books_obj.tokenize_predict_data()

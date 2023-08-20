@@ -15,17 +15,17 @@ from data_prep import DataPreprocessor
 from model import BertModel
 from dicts import categories
 
-
-
 class LogicHandler:
     def __init__(self):
+        self.cat_model_path = 'models/pt_cat_modelV1'
+        self.sub_model_path = 'models/pt_sub_modelV1'
         self.combined_data = None
         self.category_keys = list(categories.keys())
+        # Blank df for writing to CSV
+        self.predict_df = pd.DataFrame()
         self.category_values = [item for sublist in categories.values() for item in sublist]
         self.num_categories = len(self.category_keys)
         self.num_subcategories = len(self.category_values)
-        self.cat_model = BertModel(self.num_categories, self.num_subcategories)
-        self.sub_model = BertModel(self.num_categories, self.num_subcategories)
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.label_encoder_cat = LabelEncoder()
@@ -43,18 +43,26 @@ class LogicHandler:
         self.num_categories = len(self.category_keys)
         # Number of subcategory
         self.num_subcategories = len(self.subcategory_mapping.keys())
-
+    def return_processed_data(self):
+        return self.predict_df
+    
     def view_data(self):
         return self.combined_data
     
-    def load_model(self, model_path):
-        # Load saved model weights
-        state_dict = torch.load(model_path)
-        # Load the model state dictionary into the model architecture
-        self.cat_model.load_state_dict(state_dict)
-        self.sub_model.load_state_dict(state_dict)
+    def load_cat_model(self):
+        cat_model = BertModel(self.num_categories, self.num_subcategories)
+        state_dict = torch.load(self.cat_model_path)
+        cat_model.load_state_dict(state_dict)
         # Set the models to evaluation mode
-        self.cat_model.eval(), self.sub_model.eval()
+        cat_model.eval()
+        return cat_model
+
+    def load_sub_model(self):
+        sub_model = BertModel(self.num_categories, self.num_subcategories)
+        # Load saved model weights
+        state_dict = torch.load(self.sub_model_path)
+        self.sub_model.load_state_dict(state_dict)
+        self.sub_model.eval() # Set the models to evaluation mode
 
     def merge_csv_files(self, csv_files):
         if len(csv_files) < 2 or len(csv_files) > 8:
@@ -67,37 +75,46 @@ class LogicHandler:
         self.combined_data = df
         return df
     
-    def prep_df(self):
-        self.combined_data = self.combined_data.clean_dataframe()
-        X_predict = self.combined_data.tokenize_predict_data()
+    def prep_df(self, df):
+        # print df type
+        print(type(df))
+        df_obj = DataPreprocessor(df)
+        df_obj.clean_dataframe()
+        X_predict = df_obj.tokenize_predict_data()
         predict_input_ids = torch.tensor(X_predict, dtype=torch.long)
         predict_dataset = TensorDataset(predict_input_ids)
         predict_dataloader = DataLoader(predict_dataset, batch_size=1, shuffle=False)
         print("Length of predict_dataloader:", len(predict_dataloader))
         return predict_dataloader
 
-    def predict(self):
-        predict_dataloader = self.prep_df()
-        df = self.combined_data
-        with open(df, mode='w', newline='', encoding='utf-8') as csvfile:
+    def predict(self, csv_file):
+        df = csv_file
+        model = self.load_cat_model()
+        model.to(self.device)
+        output_csv = 'predict_data_test.csv'
+        
+        predict_dataloader = self.prep_df(df)
+        print("Passed prep_df")
+        with open(output_csv, mode='w', newline='', encoding='utf-8') as csvfile:
             fieldnames = ['Description', 'Category', 'Subcategory']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
             writer.writeheader()
             for batch in predict_dataloader:
                 input_ids = batch[0].to(self.device)
                 with torch.no_grad():
-                    category_probs, subcategory_probs = self.model(input_ids)
+                    category_probs, _ = model(input_ids)
                     category_predictions = category_probs.argmax(dim=-1)
-                    subcategory_predictions = subcategory_probs.argmax(dim=-1)
+                    #subcategory_predictions = subcategory_probs.argmax(dim=-1)
                 for i in range(input_ids.size(0)):
                     category_name = self.label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
-                    subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
+                    #subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
                     # Unmap input_ids to the original description
                     single_input_ids = input_ids[i].to('cpu')
                     tokens = self.tokenizer.convert_ids_to_tokens(single_input_ids)
                     description = self.tokenizer.convert_tokens_to_string(tokens).strip()
-                    writer.writerow({'Description': description, 'Category': category_name, 'Subcategory': subcategory_name})
-        return None
+                    writer.writerow({'Description': description, 'Category': category_name})
+        self.predict_df = pd.read_csv(output_csv)
+        return output_csv
 
 class StyledMessageBox(QMessageBox):
     def __init__(self, dark_mode=True):
@@ -144,7 +161,7 @@ class Application(QMainWindow):
     def init_ui(self):
         layout = QGridLayout()
         self.setFixedSize(800, 500)
-        #self.setWindowIcon(QIcon('utils/icons/sorting_icon.png'))
+        self.setWindowIcon(QIcon('utils/icons/sorting_icon.png'))
         if self.dark_mode:
             bg_color = "#2c2c2c"
             fg_color = "#e1e1e1"
@@ -167,7 +184,7 @@ class Application(QMainWindow):
         '''Model Version Display'''
         self.model_version_label = QLabel("Model Version: pt_v1", self)
         self.model_version_label.setStyleSheet(f"color: {fg_color}; font-weight: bold;")
-        layout.addWidget(self.model_version_label, 0, 4, 1, 3, Qt.AlignCenter)
+        layout.addWidget(self.model_version_label, 0, 4, 1, 3, Qt.AlignBottom)
 
         '''Switch Theme Button'''
         self.switch_theme_button = QPushButton(self)
@@ -185,10 +202,10 @@ class Application(QMainWindow):
 
         '''CSV Listbox'''
         self.csv_listbox = QListWidget(self)
-        #self.csv_listbox.setFixedHeight(150)
+        self.csv_listbox.setFixedHeight(200)
         #self.csv_listbox.setFixedWidth(581)
         self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-        layout.addWidget(self.csv_listbox, 2, 2, 3, 8)
+        layout.addWidget(self.csv_listbox, 2, 2, 3, 8, Qt.AlignBottom)
 
 
         '''Add CSV Button'''
@@ -205,17 +222,13 @@ class Application(QMainWindow):
         self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         layout.addWidget(self.remove_csv_button, 5, 7, 1, 2, Qt.AlignCenter)
 
-
-        # Merge CSVs
+        '''Merge CSVs Button'''
         self.merge_button = QPushButton("Merge CSVs", self)
         self.merge_button.clicked.connect(self.merge_csvs)
         self.merge_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         layout.addWidget(self.merge_button, 7, 3, 1, 6) 
 
-
-
-
-        # Process
+        '''Process Button'''
         self.process_button = QPushButton("Process", self)
         self.process_button.clicked.connect(self.process_data)  # Connecting the process_data function
         self.process_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
@@ -252,7 +265,6 @@ class Application(QMainWindow):
         self.remove_csv_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         self.merge_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         self.process_button.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
-
 
     def switch_theme(self):
         self.dark_mode = not self.dark_mode
@@ -355,36 +367,30 @@ class Application(QMainWindow):
         data_preview.setLayout(layout)
         data_preview.exec_()
 
-
-    
     def process_data(self):
-        # csv_file = single csv file or merged csv file
+        msg_box = StyledMessageBox(self.dark_mode)
         if len(self.csv_files) == 0:
-            QMessageBox.showerror("Error", "Please select CSV file before processing.")
+            msg_box.show_critical("Error", "Please select CSV file before processing.")
             return
         elif len(self.csv_files) == 1:
-            csv_file = self.csv_files[0]
+            df_to_process = pd.read_csv(self.csv_files[0])
         elif self.logic.combined_data is None:
-            QMessageBox.showerror("Error", "Please merge CSV files before processing.")
+            msg_box.show_critical("Error", "Please merge CSV files before processing.")
             return
         else: # Merged CSV file
-            csv_file = self.logic.combined_data
+            df_to_process = self.logic.combined_data
         try:
-            # Load the model
-            self.logic.load_model()
-            # Predict using the model
-            self.logic.predict(csv_file)
+            self.logic.predict(df_to_process)
             # Save file dialog
             save_path, _ = QFileDialog.getSaveFileName(self, "Save Processed Data", "", "CSV files (*.csv)")
             if save_path:
-                # Assuming logic.predict() returns a dataframe of processed data
-                processed_data = self.logic.get_processed_data()
+                processed_data = self.logic.return_processed_data()
                 processed_data.to_csv(save_path, index=False)
-                QMessageBox.showinfo("Success", f"Data processed and saved to {save_path}")
+                msg_box.show_information("Success", f"Data processed and saved to {save_path}")
             else:
-                QMessageBox.showinfo("Information", "Data processed but not saved.")
+                msg_box.show_information("Information", "Data processed but not saved.")
         except Exception as e:
-            QMessageBox.showerror("Error", f"An error occurred: {str(e)}")
+            msg_box.show_critical("Error", f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

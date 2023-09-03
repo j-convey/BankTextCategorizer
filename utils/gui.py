@@ -7,7 +7,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QLabel, QLineEdit, QListWidget, QPushButton, 
                              QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox, 
-                             QDialog, QSpacerItem, QSizePolicy)
+                             QDialog, QProgressDialog, QSizePolicy)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QDropEvent
 from PyQt5.QtCore import Qt, QUrl, QStringListModel
@@ -88,43 +88,34 @@ class LogicHandler:
         print("Length of predict_dataloader:", len(predict_dataloader))
         return predict_dataloader
 
-    def predict(self, df):
+    def predict(self, df, progress_callback=None):
         # Load models
         cat_model = self.load_cat_model()
         sub_model = self.load_sub_model()
-
         cat_model.to(self.device)
         sub_model.to(self.device)
-
         output_csv = 'predict_data_test.csv'
         predict_dataloader = self.prep_df(df)
-
+        total_items = len(predict_dataloader.dataset)
         # Lists to store predictions and descriptions
         categories, subcategories, descriptions = [], [], []
-
         for batch in predict_dataloader:
             input_ids = batch[0].to(self.device)
-
             with torch.no_grad():
                 category_probs, _ = cat_model(input_ids)
                 category_predictions = category_probs.argmax(dim=-1)
-
                 _, subcategory_probs = sub_model(input_ids)
                 subcategory_predictions = subcategory_probs.argmax(dim=-1)
-
             for i in range(input_ids.size(0)):
                 category_name = self.label_encoder_cat.inverse_transform([category_predictions[i].item()])[0]
                 categories.append(category_name)
-                
                 subcategory_name = self.label_encoder_subcat.inverse_transform([subcategory_predictions[i].item()])[0]
                 subcategories.append(subcategory_name)
-                
                 # Unmap input_ids to the original description
                 single_input_ids = input_ids[i].to('cpu')
                 tokens = self.tokenizer.convert_ids_to_tokens(single_input_ids)
                 description = self.tokenizer.convert_tokens_to_string([token for token in tokens if token != "[PAD]"]).strip()
-                descriptions.append(description)
-    
+                descriptions.append(description)    
         # Write to CSV
         with open(output_csv, mode='w', newline='', encoding='utf-8') as csvfile:
             fieldnames = ['Description', 'Category', 'Subcategory']
@@ -132,25 +123,23 @@ class LogicHandler:
             writer.writeheader()
             for description, category, subcategory in zip(descriptions, categories, subcategories):
                 writer.writerow({'Description': description, 'Category': category, 'Subcategory': subcategory})
-
         self.predict_df = pd.read_csv(output_csv)
         return output_csv
 
 class StyledMessageBox(QMessageBox):
     def __init__(self, dark_mode=True):
         super().__init__()
-
         if dark_mode:
             bg_color = "#2c2c2c"
             fg_color = "#e1e1e1"
         else:
             bg_color = "#e1e1e1"
             fg_color = "#2c2c2c"
-
         self.setStyleSheet(f"QMessageBox {{background-color: {bg_color}; color: {fg_color};}}")
-
+        self.setWindowIcon(QIcon('utils/icons/sorting_icon.png'))
+        
     def show_critical(self, title, text):
-        self.setText(title)
+        self.setWindowTitle(title)
         self.setInformativeText(text)
         self.setIcon(QMessageBox.Critical)
         return self.exec_()
@@ -166,7 +155,6 @@ class StyledMessageBox(QMessageBox):
         self.setInformativeText(text)
         self.setIcon(QMessageBox.Warning)
         return self.exec_()
-
 
 class Application(QMainWindow):
     def __init__(self):
@@ -199,7 +187,6 @@ class Application(QMainWindow):
         blankWidget = QWidget()
         blankWidget.setFixedSize(25, 25)
 
-
         # ROW, COLUMN, ROW SPAN, COLUMN SPAN, ALIGNMENT
         '''Model Version Display'''
         self.model_version_label = QLabel("Model Version: pt_v1", self)
@@ -213,7 +200,6 @@ class Application(QMainWindow):
         self.switch_theme_button.setFixedSize(32, 32)  # Adjust size to fit icon
         layout.addWidget(self.switch_theme_button, 0, 10, 1, 1, Qt.AlignRight)
 
-
         '''CSV Files Button'''
         self.csv_files = []
         self.csv_label = QLabel("CSV Files:", self)
@@ -226,7 +212,6 @@ class Application(QMainWindow):
         #self.csv_listbox.setFixedWidth(581)
         self.csv_listbox.setStyleSheet(f"background-color: {btn_color}; color: {btn_fg_color}")
         layout.addWidget(self.csv_listbox, 2, 2, 3, 8, Qt.AlignBottom)
-
 
         '''Add CSV Button'''
         self.csv_button = QPushButton("Add CSV", self)
@@ -307,10 +292,8 @@ class Application(QMainWindow):
     def dropEvent(self, event: QDropEvent):
         # Extracting file paths from the dropped object
         file_urls = event.mimeData().urls()
-        
         for url in file_urls:
             file_path = url.toLocalFile()
-
             # Checking if the file is a CSV before adding it to the list
             if file_path.endswith('.csv'):
                 self.csv_files.append(file_path)
@@ -323,12 +306,13 @@ class Application(QMainWindow):
             self.csv_listbox.addItem(file_path)
     
     def remove_csv_path(self):
+        msg_box = StyledMessageBox(self.dark_mode)
+        self.apply_widget_theme(msg_box)
         selected_items = self.csv_listbox.selectedItems()
         if not selected_items:  # No item selected
             msg_box = StyledMessageBox(self.dark_mode)
             self.apply_widget_theme(msg_box)
-            msg_box.warning(self, "Warning", "Please select a CSV file to remove.")
-
+            msg_box.show_critical("Error", "Please select a CSV file to remove.")
         for item in selected_items:
             self.csv_files.remove(item.text())  # Remove from list
             self.csv_listbox.takeItem(self.csv_listbox.row(item))  # Remove from GUI listbox
@@ -386,10 +370,18 @@ class Application(QMainWindow):
         layout.addWidget(table)
         data_preview.setLayout(layout)
         data_preview.exec_()
+    
+    def init_progress_dialog(self):
+        self.progress = QMessageBox(self)
+        self.progress.setIcon(QMessageBox.Information)
+        self.progress.setText("Processing data...")
+        self.progress.setWindowTitle("Progress")
+        self.progress.setStandardButtons(QMessageBox.NoButton)  # Hide all buttons to act as an indicator
+        self.progress.show()
 
     def process_data(self):
         msg_box = StyledMessageBox(self.dark_mode)
-        # Make sure the provided input is consistent with expectations
+        self.apply_widget_theme(msg_box)
         if len(self.csv_files) == 0:
             msg_box.show_critical("Error", "Please select CSV file before processing.")
             return
@@ -400,16 +392,16 @@ class Application(QMainWindow):
             return
         else:
             df_to_process = self.logic.combined_data
-
         try:
             self.logic.predict(df_to_process)
-
             # Save file dialog
             save_path, _ = QFileDialog.getSaveFileName(self, "Save Processed Data", "", "CSV files (*.csv)")
             if save_path:
                 processed_data = self.logic.return_processed_data()
                 processed_data.to_csv(save_path, index=False)
                 msg_box.show_information("Success", f"Data processed and saved to {save_path}")
+                # Show the processed data
+                self.show_merged_data(processed_data)
             else:
                 msg_box.show_information("Information", "Data processed but not saved.")
         except Exception as e:

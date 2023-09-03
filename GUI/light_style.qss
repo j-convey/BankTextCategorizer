@@ -1,0 +1,16 @@
+QWidget {
+    background-color: #e1e1e1;
+}
+QLabel {
+    color: #2c2c2c;
+}
+QPushButton {
+    background-color: #a7a7a7;
+    color: #2c2c2c;
+}
+QTabWidget {
+    background-color: #a7a7a7;
+}
+QTabBar {
+    color: #2c2c2c;
+}

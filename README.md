@@ -56,7 +56,9 @@ By following these steps, you can easily customize the categorization to suit yo
 
 
 ## 🖥️ UI
-![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/e701405c-a379-4a15-936f-07215da23efe)
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/f962c7ee-ea59-4f81-ab1d-736e4e1ac035)
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/79c0f961-c9db-4559-92ff-6a0e1b8f46c6)
+
 
 ## 🏗️ Code Structure
 - Data Preprocessing: DataPreprocessor class is responsible for reading the CSV file, cleaning the data, tokenizing the sentences, and preparing the data for training.
@@ -69,10 +71,9 @@ Here are my results after using main.csv dataset (62,793 lines of data) for 2 ep
 
 
 ## 🔮 Future Improvements
-- Implementing the subcategory model training function.
+- Adding Visualizers for viewing categorized data to Summary and Details tab.
 - Refining the data preprocessing pipeline.
 - Fine-tuning the BERT model for better performance.
-- Implementing a gui for ease of use.
 
 ## 🤝 Contribute
 1. Consider contributing to the project.

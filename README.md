@@ -56,8 +56,9 @@ By following these steps, you can easily customize the categorization to suit yo
 
 
 ## 🖥️ UI
-![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/f962c7ee-ea59-4f81-ab1d-736e4e1ac035)
-![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/79c0f961-c9db-4559-92ff-6a0e1b8f46c6)
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/6564f384-7181-4daa-a014-17c200f72090)
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/f05b291a-cc4b-418f-a328-937eb771da5a)
+![image](https://github.com/j-convey/BankTextCategorizer/assets/85854964/9b4a0499-37e2-4e70-846d-ea8dd75bfa26)
 
 
 ## 🏗️ Code Structure

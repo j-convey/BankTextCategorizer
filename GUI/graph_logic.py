@@ -47,7 +47,7 @@ class GraphLogic():
     def ytd_spending(self):
         current_month, current_year = self.return_monthyear()
         current_year_df = self.df[(self.df['Date'].dt.year == current_year)]
-        return current_year_df['Price'].sum()
+        return Decimal(current_year_df['Price'].sum()).quantize(Decimal("0.00"))
     
     
     def ytd_cat_subcat_sunburst(self):
@@ -82,8 +82,8 @@ class GraphLogic():
             parents=parents,
             values=values))
         fig.update_layout(
-            title="YTD", 
-            margin=dict(l=0, r=0, b=0, t=0),
+            title=f"Spending for {current_year}", 
+            margin=dict(l=0, r=0, b=0, t=40),
             width=480,  # set the width
             height=280)  # set the height
         #fig.show()
@@ -127,17 +127,19 @@ class GraphLogic():
         ))
 
         fig.update_layout(
-            title=f"MTD for {datetime.date(current_year, current_month, 1).strftime('%B')}", 
-            margin=dict(l=0, r=0, b=0, t=0),
+            title=f"Spending in {datetime.date(current_year, current_month, 1).strftime('%B')}", 
+            margin=dict(l=0, r=0, b=0, t=40),
             width=480,  # set the width
-            height=280  # set the height
+            height=280,  # set the height
         )
         return fig
 
 
 
-'''obj = GraphLogic()
+obj = GraphLogic()
 print(obj.return_monthyear())
 print(obj.mtd_spending())
 print(obj.ytd_spending())
-obj.ytd_cat_subcat_sunburst()'''
+obj.ytd_cat_subcat_sunburst()
+obj.mtd_cat_subcat_sunburst()
+

@@ -46,7 +46,12 @@ class ThemeManager:
                     background-color: #2c2c2c;
                     color: #e1e1e1;
                 }
-                /* Include additional styles if needed */
+                .gtitle {
+                    color: red; /* Change this to your desired color */
+                    font-family: "Open Sans", verdana, arial, sans-serif;
+                    font-size: 17px;
+                    font-weight: normal;
+                }
             </style>
             '''
         else:

@@ -41,3 +41,17 @@ QMenu::item:selected {
     color: #e1e1e1; /* Matching text color to your theme */
 }
 
+/* Styles for QWebEngineView when in dark mode */
+/* Note: These styles should be included in the HTML content rendered by the QWebEngineView */
+
+/*
+QWebEngineView Dark Mode Styles:
+---------------------------------
+<style>
+    body {
+        background-color: #2c2c2c;
+        color: #e1e1e1;
+    }
+    /* Include additional styles if needed */
+</style>
+*/

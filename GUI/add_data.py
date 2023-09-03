@@ -49,12 +49,12 @@ class AddData(QWidget):
         buttons_layout.addStretch(1)
         self.csv_button = QPushButton("Add CSV")
         self.csv_button.setIcon(self.folder_icon)
-        # self.csv_button.clicked.connect(self.add_csv_path)  # Assuming this is defined elsewhere
+        self.csv_button.clicked.connect(self.add_csv_path)  # Assuming this is defined elsewhere
         buttons_layout.addWidget(self.csv_button)
 
         self.remove_csv_button = QPushButton("Remove CSV")
         self.remove_csv_button.setIcon(self.trash_icon)
-        # self.remove_csv_button.clicked.connect(self.remove_csv_path)  # Assuming this is defined elsewhere
+        self.remove_csv_button.clicked.connect(self.remove_csv_path)  # Assuming this is defined elsewhere
         buttons_layout.addWidget(self.remove_csv_button)
         buttons_layout.addStretch(1)
 
@@ -67,9 +67,9 @@ class AddData(QWidget):
 
         # Merge and Process buttons
         self.merge_button = QPushButton("Merge CSVs")
-        # self.merge_button.clicked.connect(self.merge_csvs)  # Assuming this is defined elsewhere
+        self.merge_button.clicked.connect(self.merge_csvs)  # Assuming this is defined elsewhere
         self.process_button = QPushButton("Process")
-        # self.process_button.clicked.connect(self.process_data)  # Assuming this is defined elsewhere
+        self.process_button.clicked.connect(self.process_data)  # Assuming this is defined elsewhere
 
         # Populate the layout with widgets
         layout.addLayout(csv_header_layout)
@@ -114,7 +114,6 @@ class AddData(QWidget):
         for item in selected_items:
             self.csv_files.remove(item.text())  # Remove from list
             self.csv_listbox.takeItem(self.csv_listbox.row(item))  # Remove from GUI listbox
-
 
     def merge_csvs(self):
         msg_box = MessageBox()

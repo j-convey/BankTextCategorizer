@@ -9,7 +9,7 @@ from summary import SummaryTab
 from details import DetailsTab
 from add_data import AddData
 from logic import LogicHandler
-from message_box import MessageBox, ThemeManager
+from message_box import ThemeManager
 
 
 class BankingApp(QMainWindow):
@@ -17,15 +17,13 @@ class BankingApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.theme_manager = ThemeManager()
-        self.theme_icon_light = QIcon('icons/dark_mode.png')  
-        self.theme_icon_dark = QIcon('icons/light_mode.png')
-        AddData.folder_icon = QIcon('utils/icons/folder_icon.png')
-        AddData.trash_icon = QIcon('icons/trash.png')
+        AddData.folder_icon = QIcon('GUI/icons/folder_icon.png')
+        AddData.trash_icon = QIcon('GUI/icons/trash.png')
         self.logic = LogicHandler()  # Assuming LogicHandler is defined elsewhere
         self.init_ui()
 
     def init_ui(self):
-        self.setMinimumSize(640, 480)
+        self.setMinimumSize(1200, 700)
         self.setWindowTitle("Banking App")
         # Initialize menu bar
             # Initialize menu bar
@@ -60,7 +58,8 @@ class BankingApp(QMainWindow):
 
         # Initialize tab widget
         self.tab_widget = QTabWidget()
-        self.summary_tab = SummaryTab()  
+        self.summary_tab = SummaryTab() 
+        self.themeChanged.connect(self.summary_tab.update_theme) 
         self.details_tab = DetailsTab() 
         self.csv_tab = AddData() 
 
@@ -79,6 +78,7 @@ class BankingApp(QMainWindow):
     def switch_theme(self, dark_mode):
         ThemeManager.dark_mode = dark_mode  # Assuming ThemeManager is defined elsewhere
         self.theme_manager.apply_theme(self)
+        self.themeChanged.emit(dark_mode)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

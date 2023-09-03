@@ -17,6 +17,7 @@ class ThemeManager:
         with open(stylesheet_path, "r") as f:
             stylesheet = f.read()
         cls._apply_stylesheet_to_widget_and_children(widget, stylesheet)
+        
 
     @classmethod
     def _apply_stylesheet_to_widget_and_children(cls, widget, stylesheet):
@@ -26,6 +27,38 @@ class ThemeManager:
             child.setStyleSheet(stylesheet)
             child.update()
 
+    @classmethod
+    def update_widget_theme(cls, widget):
+        cls.apply_theme(widget)
+        widget.update_content()
+        widget.update_graph()
+
+    @classmethod
+    def get_plotly_bgcolor(cls):
+        return '#2c2c2c' if cls.dark_mode else '#e1e1e1'
+    
+    @classmethod
+    def get_webview_css(cls):
+        if cls.dark_mode:
+            return '''
+            <style>
+                body {
+                    background-color: #2c2c2c;
+                    color: #e1e1e1;
+                }
+                /* Include additional styles if needed */
+            </style>
+            '''
+        else:
+            return '''
+            <style>
+                body {
+                    background-color: #e1e1e1;
+                    color: black;
+                }
+                /* Include additional styles if needed */
+            </style>
+            '''
 class MessageBox(QMessageBox):
     dark_mode = True  # Class variable as a default value
 

@@ -10,6 +10,7 @@ from details import DetailsTab
 from add_data import AddData
 from logic import LogicHandler
 from message_box import ThemeManager
+from edit_data import EditData
 
 
 class BankingApp(QMainWindow):
@@ -62,10 +63,12 @@ class BankingApp(QMainWindow):
         self.themeChanged.connect(self.summary_tab.update_theme) 
         self.details_tab = DetailsTab() 
         self.csv_tab = AddData() 
+        self.edit_data_tab = EditData()
 
         self.tab_widget.addTab(self.summary_tab, "Summary")
         self.tab_widget.addTab(self.details_tab, "Details")
         self.tab_widget.addTab(self.csv_tab, "Add CSV Files")
+        self.tab_widget.addTab(self.edit_data_tab, "Edit Data")
 
         # Central widget and layout
         central_widget = QWidget(self)

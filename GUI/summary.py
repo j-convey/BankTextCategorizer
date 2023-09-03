@@ -15,6 +15,7 @@ class SummaryTab(QWidget):
     def init_ui(self):
         self.graph_logic = GraphLogic()
         self.web_view = QWebEngineView()
+        self.mtd_web_view = QWebEngineView() 
         self.web_view.setMaximumSize(QSize(600, 400))
 
         current_month, current_year = self.graph_logic.return_monthyear()
@@ -38,6 +39,7 @@ class SummaryTab(QWidget):
         fig = self.graph_logic.ytd_cat_subcat_sunburst()
         # Configuration to remove mode bar (toolbar)
         fig.update_layout(
+            title="YTD",  # Add this line to add the "YTD" label
             paper_bgcolor=ThemeManager.get_plotly_bgcolor(),  # background from theme
             plot_bgcolor=ThemeManager.get_plotly_bgcolor(),  # background from theme
         )
@@ -60,6 +62,13 @@ class SummaryTab(QWidget):
         self.web_view.setHtml(raw_html_with_cdn)
         self.web_view.setMaximumSize(QSize(600, 400))
 
+        # MTD Plotly Graph
+        mtd_fig = self.graph_logic.mtd_cat_subcat_sunburst()  
+        mtd_raw_html = pio.to_html(mtd_fig, include_plotlyjs=False, full_html=False, config=config)
+        mtd_raw_html_with_cdn = f'<html style="background: transparent;"><head>{theme_css}</head><body><script src="https://cdn.plot.ly/plotly-latest.min.js"></script>{mtd_raw_html}</body></html>'
+        self.mtd_web_view.setHtml(mtd_raw_html_with_cdn)
+        self.mtd_web_view.setMaximumSize(QSize(600, 400))
+
         summary_label.setMaximumHeight(40)
         current_month_label.setMaximumHeight(40)
         ytd_spending_label.setMaximumHeight(40)
@@ -80,7 +89,7 @@ class SummaryTab(QWidget):
         layout.addWidget(current_month_label, 1, 0, 1, 3)  # Spanning 1 row and 3 columns
         layout.addWidget(ytd_spending_label, 2, 0, 1, 3)  # Spanning 1 row and 3 columns
         layout.addWidget(self.web_view, 3, 0, 1, 3)  # Spanning 1 row and 3 columns
-
+        layout.addWidget(self.mtd_web_view, 4, 0, 1, 3)  # Spanning 1 row and 3 columns
         # Add vertical spacer
         layout.addItem(v_spacer, 4, 0, 1, 3)
 
@@ -88,20 +97,28 @@ class SummaryTab(QWidget):
     @pyqtSlot()
     def update_theme(self):
         ThemeManager.update_widget_theme(self)
+
     def update_content(self):
         self.update_graph()
+        self.update_mtd_graph()
 
     def update_graph(self):
         fig = self.graph_logic.ytd_cat_subcat_sunburst()
+        mtd_fig = self.graph_logic.mtd_cat_subcat_sunburst()
         bg_color = ThemeManager.get_plotly_bgcolor()
-        print(f"Theme background color: {bg_color}")  # Debug statement 2
         fig.update_layout(
+            title="YTD",  # Add this line to add the "YTD" label
             paper_bgcolor=bg_color,
             plot_bgcolor=bg_color,
         )
         config = {'displayModeBar': False}
         raw_html = pio.to_html(fig, include_plotlyjs=False, full_html=False, config=config)
+        mtd_raw_html = pio.to_html(mtd_fig, include_plotlyjs=False, full_html=False, config=config)
         theme_css = ThemeManager.get_webview_css()
         raw_html_with_cdn = f'<html style="background: transparent;"><head>{theme_css}</head><body><script src="https://cdn.plot.ly/plotly-latest.min.js"></script>{raw_html}</body></html>'
+        mtd_raw_html_with_cdn = f'<html style="background: transparent;"><head>{theme_css}</head><body><script src="https://cdn.plot.ly/plotly-latest.min.js"></script>{mtd_raw_html}</body></html>'
         self.web_view.setHtml(raw_html_with_cdn)
+        self.mtd_web_view.setHtml(mtd_raw_html_with_cdn)
         self.web_view.page().runJavaScript('location.reload();')
+        self.mtd_web_view.page().runJavaScript('location.reload();')
+

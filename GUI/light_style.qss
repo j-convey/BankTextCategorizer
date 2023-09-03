@@ -3,10 +3,14 @@ QWidget {
 }
 QLabel {
     color: #2c2c2c;
+    font-weight: 500;
 }
 QPushButton {
     background-color: #a7a7a7;
     color: #2c2c2c;
+    border: none;
+    border-radius: 4px; /* Rounded corners */
+    padding: 10px; /* Some padding */
 }
 QTabWidget {
     background-color: #a7a7a7;
@@ -14,3 +18,26 @@ QTabWidget {
 QTabBar {
     color: #2c2c2c;
 }
+QTabBar::tab {
+    padding: 10px; /* Some padding */
+}
+
+QTabBar::tab:selected {
+    border: 2px solid;
+    border-radius: 4px; /* Rounded corners for selected tab */
+}
+
+
+/* Table styling */
+QTableWidget {
+    border: none;
+}
+
+
+
+
+
+
+
+
+

@@ -1,34 +1,56 @@
+/* Base QWidget styling */
 QWidget {
     background-color: #2c2c2c;
     color: white;
 }
+
+/* Label styling */
 QLabel {
     color: #e1e1e1;
+    font-weight: 500; /* Make labels a bit bolder */
 }
+
+/* Button styling */
 QPushButton {
     background-color: #4a4a4a;
     color: #e1e1e1;
+    border: none;
+    border-radius: 4px; /* Rounded corners */
+    padding: 10px; /* Some padding */
 }
-QTabWidget {
+
+QPushButton:hover {
+    background-color: #5a5a5a;
+}
+
+QPushButton:pressed {
+    background-color: #3a3a3a;
+}
+
+/* Tab styling */
+QTabWidget, QTabBar {
     background-color: #4a4a4a;
-}
-QTabBar {
     color: #e1e1e1;
 }
+
 QTabBar::tab {
-    color: #e1e1e1; 
+    color: #e1e1e1;
     background: #4a4a4a;
+    padding: 10px; /* Some padding */
 }
 
 QTabBar::tab:selected {
-    background: #5a5a5a; /* Slightly lighter than the background */
-    border: 2px solid #e1e1e1; /* White border for added contrast */
+    background: #3a3a3a;
+    border: 2px solid #e1e1e1;
+    border-radius: 4px; /* Rounded corners for selected tab */
 }
 
+/* Table styling */
 QTableWidget {
     gridline-color: #5A5A5A;
     border: none;
 }
+
 QHeaderView::section {
     background-color: #3A3A3A;
     color: #e1e1e1;
@@ -36,22 +58,28 @@ QHeaderView::section {
     padding: 5px;
 }
 
+/* Menu styling */
 QMenu::item:selected {
-    background-color: #3a3a3a; /* Slightly darker background for legibility */
-    color: #e1e1e1; /* Matching text color to your theme */
+    background-color: #3a3a3a;
+    color: #e1e1e1;
 }
 
-/* Styles for QWebEngineView when in dark mode */
-/* Note: These styles should be included in the HTML content rendered by the QWebEngineView */
+QScrollBar:vertical {
+    border: none;
+    background: #4a4a4a;
+    width: 10px; /* Adjust the width */
+}
 
-/*
-QWebEngineView Dark Mode Styles:
----------------------------------
-<style>
-    body {
-        background-color: #2c2c2c;
-        color: #e1e1e1;
-    }
-    /* Include additional styles if needed */
-</style>
-*/
+QScrollBar::handle:vertical {
+    background: #5a5a5a;
+    border-radius: 5px; /* Rounded handle */
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: #4a4a4a;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}

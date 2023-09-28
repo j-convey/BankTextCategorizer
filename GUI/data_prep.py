@@ -20,14 +20,13 @@ class DataPreprocessor:
         if isinstance(data_input, str):
             self.df = pd.read_csv(data_input)
             self.file_name = data_input.split('/')[-1].split('.')[0]
-        # If it's a DataFrame, directly assign it
         elif isinstance(data_input, pd.DataFrame):
             self.df = data_input
-            self.file_name = ""  # Default to an empty string or set it to some value if needed
+            self.file_name = ""  # Default to an empty string
         else:
             raise ValueError("data_input must be a file path or a pandas DataFrame")
 
-        #self.file_name = file_name
+        
         categories = {
             'Auto': ['Gas','Maintenance', 'Upgrades', 'Other_Auto'],
             'Baby': ['Diapers', 'Formula', 'Clothes', 'Toys', 'Other_Baby'],

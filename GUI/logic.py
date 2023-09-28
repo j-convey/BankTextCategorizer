@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 from transformers import BertTokenizer
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-# Import custom modules
+# custom modules
 from data_prep import DataPreprocessor
 from model import BertModel
 from dicts import categories
@@ -19,7 +19,6 @@ class LogicHandler(QObject):
         self.sub_model_path = 'models/pt_sub_modelV1'
         self.combined_data = None
         self.category_keys = list(categories.keys())
-        # Blank df for writing to CSV
         self.predict_df = pd.DataFrame()
         self.category_values = [item for sublist in categories.values() for item in sublist]
         self.num_categories = len(self.category_keys)
@@ -52,7 +51,6 @@ class LogicHandler(QObject):
         cat_model = BertModel(self.num_categories, self.num_subcategories)
         state_dict = torch.load(self.cat_model_path)
         cat_model.load_state_dict(state_dict)
-        # Set the models to evaluation mode
         cat_model.eval()
         return cat_model
 

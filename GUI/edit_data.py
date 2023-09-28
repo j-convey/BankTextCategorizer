@@ -9,23 +9,23 @@ class EditData(QWidget):
 
     def init_ui(self):
         self.graphlogic = GraphLogic()
-        df = self.graphlogic.return_df()  # Assuming this returns a pandas DataFrame
+        df = self.graphlogic.return_df() 
 
         self.layout = QVBoxLayout()
 
         self.tableWidget = QTableWidget()
 
-        # Set table size to DataFrame size + 5 additional rows for new data
+        # DataFrame size + 5 additional rows for new data
         self.tableWidget.setRowCount(df.shape[0] + 5)
         self.tableWidget.setColumnCount(df.shape[1])
 
         # Set DataFrame columns as table header labels
         self.tableWidget.setHorizontalHeaderLabels(df.columns.tolist())
 
-        # Make the "Description" column twice as wide as the first column (change this as necessary)
-        self.tableWidget.setColumnWidth(0, 100)  # Assuming the first column width is 100
+        # Make the "Description" column twice as wide as the first column
+        self.tableWidget.setColumnWidth(0, 100)  
         description_col_index = df.columns.get_loc("Description")
-        self.tableWidget.setColumnWidth(description_col_index, 200)  # Double the width
+        self.tableWidget.setColumnWidth(description_col_index, 200) 
 
         # Fill the table with DataFrame values
         for i in range(df.shape[0]):

@@ -4,7 +4,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QSizePolicy, QLabel
 
 import sys
-# Import your tab classes
 from summary import SummaryTab
 from details import DetailsTab
 from add_data import AddData

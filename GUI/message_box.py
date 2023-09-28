@@ -9,7 +9,7 @@ class ThemeManager:
     dark_mode = True  # Class variable as a default value
 
     def __init__(self):
-        pass  # No need to initialize dark_mode here
+        pass 
 
     @classmethod
     def apply_theme(cls, widget):

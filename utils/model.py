@@ -5,9 +5,9 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from transformers import BertForSequenceClassification
 import matplotlib.pyplot as plt
-from .data_prep import DataPreprocessor
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from data_prep import DataPreprocessor
  
 def init_model_data():
     # Data Processing

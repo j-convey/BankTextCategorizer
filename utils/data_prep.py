@@ -3,7 +3,6 @@ import pandas as pd
 import random
 import torch
 import numpy as np
-import tensorflow as tf
 from transformers import BertTokenizer
 from nltk.corpus import stopwords
 from sklearn.preprocessing import LabelEncoder
@@ -20,7 +19,6 @@ class DataPreprocessor:
         if isinstance(data_input, str):
             self.df = pd.read_csv(data_input)
             self.file_name = data_input.split('/')[-1].split('.')[0]
-        # If it's a DataFrame, directly assign it
         elif isinstance(data_input, pd.DataFrame):
             self.df = data_input
             self.file_name = ""  # Default to an empty string or set it to some value if needed
@@ -91,10 +89,10 @@ class DataPreprocessor:
         # Find the maximum length of the tokenized sequences
         actual_max = max([len(tokens) for tokens in tokenized_desc_ids])
         print("Max length in the data:", actual_max)
-        # Pad the sequences to the max_len
-        padded_desc = tf.keras.preprocessing.sequence.pad_sequences(tokenized_desc_ids, maxlen=max_len, 
-                                                                    padding='post', truncating='post')
-        self.df['Tokenized_padded'] = np.array(padded_desc).tolist()
+        # Pad the sequences to the max_len using NumPy
+        padded_desc = np.array([seq[:max_len] + [0] * (max_len - len(seq)) if len(seq) < max_len 
+                            else seq[:max_len] for seq in tokenized_desc_ids])
+        self.df['Tokenized_padded'] = padded_desc.tolist()
         # Map the Category and Sub_Category values to the corresponding one-hot encoded vectors
         self.df['Tok_Cat'] = self.df['Category'].apply(lambda x: self.category_mapping.get(x))
         self.df['Tok_Sub'] = self.df['Sub_Category'].apply(lambda x: self.subcategory_mapping.get(x))
@@ -190,10 +188,10 @@ class DataPreprocessor:
         # Find the maximum length of the tokenized sequences
         actual_max = max([len(tokens) for tokens in tokenized_desc_ids])
         print("Max length in the data:", actual_max)
-        # Pad the sequences to the max_len
-        padded_desc = tf.keras.preprocessing.sequence.pad_sequences(tokenized_desc_ids, maxlen=max_len, 
-                                                                    padding='post', truncating='post')
-        X = self.df['Tokenized_padded'] = np.array(padded_desc).tolist()
+        # Pad the sequences to the max_len using NumPy
+        padded_desc = np.array([seq[:max_len] + [0] * (max_len - len(seq)) if len(seq) < max_len 
+                            else seq[:max_len] for seq in tokenized_desc_ids])
+        X = self.df['Tokenized_padded'] = padded_desc.tolist()
         print(X)
         return X
     

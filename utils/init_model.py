@@ -11,7 +11,10 @@ class Model_Initializer:
         self.obj = DataPreprocessor(filepath)
         self.num_categories = 0
         self.num_subcategories = 0
+
         self._get_num_categories()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("Using device:", self.device)
     
     def _get_num_categories(self):
         """Return number of categories."""

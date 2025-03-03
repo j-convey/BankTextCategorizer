@@ -64,6 +64,7 @@ class DataPreprocessor:
 
     def get_df(self):
         return self.df
+    
     def get_cat_sub_numbers(self):
         return self.num_categories, self.num_subcategories
     

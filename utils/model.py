@@ -4,11 +4,10 @@ import numpy as np
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from transformers import BertForSequenceClassification
-import matplotlib.pyplot as plt
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from trainer import train_model, train_and_save_model
+from trainer import Trainer
 from init_model import Model_Initializer 
 
 class BertModel(nn.Module):
@@ -26,33 +25,6 @@ class BertModel(nn.Module):
         category_logits, subcategory_logits = logits.split([self.num_categories, self.num_subcategories], dim=-1)
         return category_logits, subcategory_logits
     
-
-def plot_training_history(history):
-    expected_keys = ['train_loss', 'train_acc', 'val_loss', 'val_acc']
-    for key in expected_keys:
-        if key not in history.keys():
-            print(f"Error: Expected key {key} not found in history")
-            return
-    # Plot training and validation loss
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(history['train_loss'], label='Training Loss')
-    plt.plot(history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title('Training vs Validation Loss')
-    plt.legend()
-    # Plot training and validation accuracy
-    plt.subplot(1, 2, 2)
-    plt.plot(history['train_acc'], label='Training Accuracy')
-    plt.plot(history['val_acc'], label='Validation Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.title('Training vs Validation Accuracy')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
 def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs):
     '''Category Training & Saving'''    
     cat_model.to(device)
@@ -73,8 +45,6 @@ def execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, devic
     plot_training_history(subcategory_history)
 
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Using device:", device)
 
     learning_rate = 1e-5
     epochs = 2
@@ -98,9 +68,9 @@ def main():
     #                                    'models/pt_cat_modelV1', epochs, learning_rate, device)
     # plot_training_history(cat_history)
     
-    # Subcategory model
-    sub_history = train_and_save_model(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, 
-                                       'models/pt_sub_modelV1', epochs, learning_rate, device)
-    plot_training_history(sub_history)
+    sub_category_model = Trainer(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate)
+
+    sub_category_model.plot_training_history()
+
 if __name__ == '__main__':
     main()

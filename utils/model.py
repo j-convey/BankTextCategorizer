@@ -60,13 +60,9 @@ def main():
     cat_model = BertModel(num_categories, num_subcategories)
     sub_model = BertModel(num_categories, num_subcategories)
 
-
-
     # Train and save models
-    # Category model (uncomment to enable)
-    # cat_history = train_and_save_model(cat_model, 'category', cat_train_dataloader, cat_val_dataloader, 
-    #                                    'models/pt_cat_modelV1', epochs, learning_rate, device)
-    # plot_training_history(cat_history)
+    # category_model = Trainer(cat_model, 'category', cat_train_dataloader, cat_val_dataloader, epochs, learning_rate)
+    # category_model.plot_training_history()
     
     sub_category_model = Trainer(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate)
 

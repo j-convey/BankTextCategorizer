@@ -1,7 +1,7 @@
 import csv
 import torch
 from transformers import BertTokenizer
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
 
 class Predict:
     def __init__(self, loaded_category_model, predict_dataloader, csv_output_name):

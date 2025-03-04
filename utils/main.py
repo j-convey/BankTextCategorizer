@@ -1,8 +1,5 @@
-from transformers import BertTokenizer
-from dicts import categories
 from data_prep import DataPreprocessor
 import torch
-from torch.utils.data import TensorDataset, DataLoader
 
 from load import Load_Models
 from predict import Predict
@@ -25,13 +22,13 @@ def main():
 
 
     # Use load_models class to load the category model
-    # model = Predict(loaded_category_model, predict_dataloader, csv_output_name)
+    model = Predict(loaded_category_model, predict_dataloader, csv_output_name)
     
-    # print("Model loaded successfully")
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # print("Using device:", device)
+    print("Model loaded successfully")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
 
-    # model.run_prediction()
+    model.run_prediction()
 
 if __name__ == "__main__":
     main()

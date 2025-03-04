@@ -8,6 +8,10 @@ from nltk.corpus import stopwords
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from torch.utils.data import TensorDataset, DataLoader
+
+from dicts import categories
+from model import BertModel
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', 50)
 stop_words = set(stopwords.words('english'))
@@ -25,46 +29,38 @@ class DataPreprocessor:
         else:
             raise ValueError("data_input must be a file path or a pandas DataFrame")
 
-        #self.file_name = file_name
-        categories = {
-            'Auto': ['Gas','Maintenance', 'Upgrades', 'Other_Auto'],
-            'Baby': ['Diapers', 'Formula', 'Clothes', 'Toys', 'Other_Baby'],
-            'Clothes': ['Clothes', 'Shoes', 'Jewelry', 'Bags_Accessories'],
-            'Entertainment': ['Sports_Outdoors', 'Movies_TV', 'DateNights', 'Arts_Crafts', 'Books', 'Games', 'Guns', 'E_Other'],
-            'Electronics': ['Accessories', 'Computer', 'TV', 'Camera', 'Phone','Tablet_Watch', 'Gaming', 'Electronics_misc'],
-            'Food': ['Groceries', 'FastFood_Restaurants'],
-            'Home': ['Maintenance', 'Furniture_Appliances', 'Hygiene', 'Gym',
-                'Home_Essentials', 'Kitchen', 'Decor', 'Security', 'Yard_Garden', 'Tools'],
-            'Medical': ['Health_Wellness'],
-            'Kids': ['K_Toys'],
-            'Personal_Care': ['Hair', 'Makeup_Nails', 'Beauty', 'Massage','Vitamins_Supplements', 'PC_Other'],
-            'Pets': ['Pet_Food', 'Pet_Toys', 'Pet_Med', 'Pet_Grooming', 'Pet_Other'],
-            'Subscriptions_Memberships': ['Entertainment', 'Gym', 'Sub_Other'],
-            'Travel': ['Hotels', 'Flights', 'Car_Rental', 'Activities']}
-        category_keys = list(categories.keys())
-        category_values = [item for sublist in categories.values() for item in sublist]
-        # Convert categorical variables to numerical labels
+
+        self.category_keys = list(categories.keys())
+        self.category_values = [item for sublist in categories.values() for item in sublist]
+        self.num_categories = 0
+        self.num_subcategories = 0
+        self.category_mapping = {}
+        self.subcategory_mapping = {}
+
+        self._category_nums()
+
+    def get_df(self):
+        return self.df
+    
+    def _category_nums(self):
         label_encoder_cat = LabelEncoder()
         label_encoder_subcat = LabelEncoder()
         onehot_encoder_cat = OneHotEncoder(sparse_output=False)
         onehot_encoder_subcat = OneHotEncoder(sparse_output=False)
         # Encode category_keys using label_encoder_cat
-        integer_encoded_cat = label_encoder_cat.fit_transform(category_keys)
+        integer_encoded_cat = label_encoder_cat.fit_transform(self.category_keys)
         onehot_encoded_cat = onehot_encoder_cat.fit_transform(integer_encoded_cat.reshape(-1, 1))
         # Encode category_values using label_encoder_subcat
-        integer_encoded_subcat = label_encoder_subcat.fit_transform(category_values)
+        integer_encoded_subcat = label_encoder_subcat.fit_transform(self.category_values)
         onehot_encoded_subcat = onehot_encoder_subcat.fit_transform(integer_encoded_subcat.reshape(-1, 1))
         # Create dictionaries for category and sub-category mapping
-        self.category_mapping = dict(zip(category_keys, onehot_encoded_cat))
-        self.subcategory_mapping = dict(zip(category_values, onehot_encoded_subcat))
+        self.category_mapping = dict(zip(self.category_keys, onehot_encoded_cat))
+        self.subcategory_mapping = dict(zip(self.category_values, onehot_encoded_subcat))
         # Number of category
-        self.num_categories = len(category_keys)
+        self.num_categories = len(self.category_keys)
         # Number of subcategory
         self.num_subcategories = len(self.subcategory_mapping.keys())
 
-    def get_df(self):
-        return self.df
-    
     def get_cat_sub_numbers(self):
         return self.num_categories, self.num_subcategories
     
@@ -126,7 +122,7 @@ class DataPreprocessor:
         self.df = self.df.drop([col for col in self.df.columns if col not in keep_columns], axis=1)
         # Make sure all columns aren't empty
         self.df.dropna(subset=["Description"], axis=0, inplace=True)
-        self.df["Category"].fillna("", inplace=True)
+        self.df.fillna({"Category": ""}, inplace=True)
         return self.df
 
     def clean_dataframe(self):
@@ -193,7 +189,7 @@ class DataPreprocessor:
         padded_desc = np.array([seq[:max_len] + [0] * (max_len - len(seq)) if len(seq) < max_len 
                             else seq[:max_len] for seq in tokenized_desc_ids])
         X = self.df['Tokenized_padded'] = padded_desc.tolist()
-        print(X)
+        # print(X)
         return X
     
     def predict_prepare_data(self):
@@ -210,3 +206,78 @@ class DataPreprocessor:
         # Concatenate the original and augmented dataframes
         self.df = pd.concat([self.df, augmented_df], ignore_index=True)
         return self.df
+
+    def prepare_DATA(self):
+        self.clean_dataframe()
+        self.tokenize_predict_data()
+        X_predict = self.tokenize_predict_data()
+        predict_input_ids = torch.tensor(X_predict, dtype=torch.long)
+        predict_dataset = TensorDataset(predict_input_ids)
+        predict_dataloader = DataLoader(predict_dataset, batch_size=1, shuffle=False)
+        print("Length of predict_dataloader:", len(predict_dataloader))
+        return predict_dataloader
+
+
+    def prepare_predict(self):
+        category_keys = list(categories.keys())
+        category_values = [item for sublist in categories.values() for item in sublist]
+        # Convert categorical variables to numerical labels
+        label_encoder_cat = LabelEncoder()
+        label_encoder_subcat = LabelEncoder()
+        onehot_encoder_cat = OneHotEncoder(sparse_output=False)
+        onehot_encoder_subcat = OneHotEncoder(sparse_output=False)
+        # Encode category_keys using label_encoder_cat
+        integer_encoded_cat = label_encoder_cat.fit_transform(category_keys)
+        onehot_encoded_cat = onehot_encoder_cat.fit_transform(integer_encoded_cat.reshape(-1, 1))
+        # Encode category_values using label_encoder_subcat
+        integer_encoded_subcat = label_encoder_subcat.fit_transform(category_values)
+        onehot_encoded_subcat = onehot_encoder_subcat.fit_transform(integer_encoded_subcat.reshape(-1, 1))
+        # Create dictionaries for category and sub-category mapping
+        self.category_mapping = dict(zip(category_keys, onehot_encoded_cat))
+        self.subcategory_mapping = dict(zip(category_values, onehot_encoded_subcat))
+        # Number of category
+        self.num_categories = len(category_keys)
+        # Number of subcategory
+        self.num_subcategories = len(self.subcategory_mapping.keys())
+
+    def prepare_for_training(self, batch_size=64):
+        self.pop_columns() 
+        self.clean_dataframe()
+        self.tokenize_data()
+        (X_train, X_test, y_cat_train, y_cat_test, y_sub_train, y_sub_test) = self.prepare_data()
+        df = self.get_df()
+        y_cat_train = np.array(y_cat_train)
+        y_sub_train = np.array(y_sub_train)
+        y_cat_test = np.array(y_cat_test)
+        y_sub_test = np.array(y_sub_test)
+        y_cat_train = np.argmax(y_cat_train, axis=1)
+        y_sub_train = np.argmax(y_sub_train, axis=1)
+        y_cat_test = np.argmax(y_cat_test, axis=1)
+        y_sub_test = np.argmax(y_sub_test, axis=1)
+        # Now convert the numpy arrays to tensors
+        y_cat_train = torch.tensor(y_cat_train, dtype=torch.long)
+        y_sub_train = torch.tensor(y_sub_train, dtype=torch.long)
+        y_cat_test = torch.tensor(y_cat_test, dtype=torch.long)
+        y_sub_test = torch.tensor(y_sub_test, dtype=torch.long)
+        # Convert tokenized sequences to input IDs
+        train_input_ids = torch.tensor(X_train)
+        val_input_ids = torch.tensor(X_test)
+        print(f"Total number of data points: {df.shape[0]}")
+        print(f"Number of training data points: {len(X_train)}")
+        print(f"Number of testing data points: {len(X_test)}")
+        
+        # Category data loaders
+        cat_train_dataset = TensorDataset(train_input_ids, y_cat_train)
+        cat_val_dataset = TensorDataset(val_input_ids, y_cat_test)
+        cat_train_dataloader = DataLoader(cat_train_dataset, batch_size=batch_size, shuffle=True)
+        cat_val_dataloader = DataLoader(cat_val_dataset, batch_size=batch_size, shuffle=False)
+        # Subcategory data loaders
+        sub_train_dataset = TensorDataset(train_input_ids, y_sub_train)
+        sub_val_dataset = TensorDataset(val_input_ids, y_sub_test)
+        sub_train_dataloader = DataLoader(sub_train_dataset, batch_size=batch_size, shuffle=True)
+        sub_val_dataloader = DataLoader(sub_val_dataset, batch_size=batch_size, shuffle=False)
+        print("Number of training batches:", len(cat_train_dataloader))
+        print("Number of validation batches:", len(sub_val_dataloader))
+
+
+        return cat_train_dataloader, cat_val_dataloader, sub_train_dataloader, sub_val_dataloader

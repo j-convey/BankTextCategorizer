@@ -4,11 +4,11 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
+from data_prep import DataPreprocessor
+from model import BertModel
 
-class Trainer:
+
+class TrainModel:
     def __init__(self, model, model_type, train_dataloader, val_dataloader, epochs, learning_rate, patience=5):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -19,7 +19,7 @@ class Trainer:
         self.learning_rate = learning_rate
         self.patience = patience
         self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=2, verbose=True)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=2)
         self.category_loss_fn = nn.CrossEntropyLoss(reduction='sum')
         self.history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
         self.best_val_loss = float('inf')
@@ -120,3 +120,32 @@ class Trainer:
         plt.legend()
         plt.tight_layout()
         plt.show()
+
+def main():
+
+    learning_rate = 1e-5
+    epochs = 2
+    batch_size = 64
+
+    data_obj = DataPreprocessor('data/main.csv')
+    num_categories = data_obj.num_categories
+    num_subcategories = data_obj.num_subcategories
+    print(f"Number of categories: {num_categories}")
+    print(f"Number of subcategories: {num_subcategories}")
+
+    cat_train_dataloader, cat_val_dataloader, sub_train_dataloader, sub_val_dataloader = data_obj.prepare_for_training()
+
+
+    # Model initialization
+    model = BertModel(num_categories, num_subcategories)
+
+    # Train and save models
+    # category_model = Trainer(cat_model, 'category', cat_train_dataloader, cat_val_dataloader, epochs, learning_rate)
+    # category_model.plot_training_history()
+    
+    sub_category_model = TrainModel(model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate)
+    sub_category_model.train()
+    sub_category_model.plot_training_history()
+
+if __name__ == '__main__':
+    main()

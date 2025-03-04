@@ -1,14 +1,6 @@
 import torch
 import torch.nn as nn
-import numpy as np
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
 from transformers import BertForSequenceClassification
-import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-
-from trainer import Trainer
-from init_model import Model_Initializer 
 
 class BertModel(nn.Module):
     def __init__(self, num_categories, num_subcategories):
@@ -25,48 +17,22 @@ class BertModel(nn.Module):
         category_logits, subcategory_logits = logits.split([self.num_categories, self.num_subcategories], dim=-1)
         return category_logits, subcategory_logits
     
-def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs):
-    '''Category Training & Saving'''    
-    cat_model.to(device)
-    category_history = train_model(cat_model, cat_train_dataloader, cat_val_dataloader, epochs, learning_rate, device, num_categories)
-    # Move the model back to CPU before saving
-    cat_model.to('cpu')
-    cat_model_save_path = 'models/pt_cat_modelV1'
-    torch.save(cat_model.state_dict(), cat_model_save_path)
-    plot_training_history(category_history)
+# def execute_cat_model(cat_model, cat_train_dataloader, cat_val_dataloader, device, num_categories, learning_rate, epochs):
+#     '''Category Training & Saving'''    
+#     cat_model.to(device)
+#     category_history = train_model(cat_model, cat_train_dataloader, cat_val_dataloader, epochs, learning_rate, device, num_categories)
+#     # Move the model back to CPU before saving
+#     cat_model.to('cpu')
+#     cat_model_save_path = 'models/pt_cat_modelV1'
+#     torch.save(cat_model.state_dict(), cat_model_save_path)
+#     plot_training_history(category_history)
 
-def execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs):
-    '''Subcategory Training & Saving'''
-    sub_model.to(device)
-    subcategory_history = train_model(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate, device)
-    sub_model.to('cpu')
-    sub_model_save_path = 'models/pt_sub_modelV1'
-    torch.save(sub_model.state_dict(), sub_model_save_path)
-    plot_training_history(subcategory_history)
+# def execute_sub_model(sub_model, sub_train_dataloader, sub_val_dataloader, device, num_subcategories, learning_rate, epochs):
+#     '''Subcategory Training & Saving'''
+#     sub_model.to(device)
+#     subcategory_history = train_model(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate, device)
+#     sub_model.to('cpu')
+#     sub_model_save_path = 'models/pt_sub_modelV1'
+#     torch.save(sub_model.state_dict(), sub_model_save_path)
+#     plot_training_history(subcategory_history)
 
-def main():
-
-    learning_rate = 1e-5
-    epochs = 2
-    batch_size = 64
-
-    data_obj = Model_Initializer('data/main.csv')
-
-    cat_train_dataloader, cat_val_dataloader, sub_train_dataloader, sub_val_dataloader = data_obj.get_data_loaders(batch_size=64)
-    num_categories = data_obj.num_categories
-    num_subcategories = data_obj.num_subcategories
-
-    # Model initialization
-    cat_model = BertModel(num_categories, num_subcategories)
-    sub_model = BertModel(num_categories, num_subcategories)
-
-    # Train and save models
-    # category_model = Trainer(cat_model, 'category', cat_train_dataloader, cat_val_dataloader, epochs, learning_rate)
-    # category_model.plot_training_history()
-    
-    sub_category_model = Trainer(sub_model, 'subcategory', sub_train_dataloader, sub_val_dataloader, epochs, learning_rate)
-
-    sub_category_model.plot_training_history()
-
-if __name__ == '__main__':
-    main()
